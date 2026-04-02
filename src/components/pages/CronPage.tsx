@@ -5,9 +5,10 @@ import { useCronStore } from "@/store/console-stores/cron-store";
 import { useOfficeStore } from "@/store/office-store";
 import { CronTaskCard } from "@/components/console/cron/CronTaskCard";
 import { CronStatsBar } from "@/components/console/cron/CronStatsBar";
+import { CronTaskDialog } from "@/components/console/cron/CronTaskDialog";
 import { LoadingState } from "@/components/console/shared/LoadingState";
 import { EmptyState } from "@/components/console/shared/EmptyState";
-import type { CronTask } from "@/gateway/adapter-types";
+import type { CronTask, CronTaskInput } from "@/gateway/adapter-types";
 
 export function CronPage() {
   const { t } = useTranslation("console");
@@ -15,10 +16,14 @@ export function CronPage() {
   const isLoading = useCronStore((s) => s.isLoading);
   const error = useCronStore((s) => s.error);
   const fetchTasks = useCronStore((s) => s.fetchTasks);
+  const addTask = useCronStore((s) => s.addTask);
   const removeTask = useCronStore((s) => s.removeTask);
   const runTask = useCronStore((s) => s.runTask);
   const updateTask = useCronStore((s) => s.updateTask);
   const openDialog = useCronStore((s) => s.openDialog);
+  const closeDialog = useCronStore((s) => s.closeDialog);
+  const dialogOpen = useCronStore((s) => s.dialogOpen);
+  const editingTask = useCronStore((s) => s.editingTask);
   const connectionStatus = useOfficeStore((s) => s.connectionStatus);
 
   useEffect(() => {
@@ -111,6 +116,14 @@ export function CronPage() {
           ))}
         </div>
       )}
+
+      <CronTaskDialog
+        open={dialogOpen}
+        editingTask={editingTask}
+        onSave={(input: CronTaskInput) => void addTask(input)}
+        onUpdate={(id: string, patch: Partial<CronTaskInput>) => void updateTask(id, patch)}
+        onClose={closeDialog}
+      />
     </div>
   );
 }
