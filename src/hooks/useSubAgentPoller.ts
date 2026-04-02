@@ -2,7 +2,7 @@ import { useEffect, useRef, type MutableRefObject } from "react";
 import type { GatewayRpcClient } from "@/gateway/rpc-client";
 import type { SessionSnapshot, SubAgentInfo } from "@/gateway/types";
 import { useOfficeStore } from "@/store/office-store";
-import { extractAgentIdFromSessionKey } from "@/lib/session-key-utils";
+import { extractAgentIdFromSessionKey, isSubAgentSessionKey } from "@/lib/session-key-utils";
 
 const POLL_INTERVAL_MS = 5_000;
 
@@ -60,10 +60,11 @@ export function useSubAgentPoller(
         };
         setSessionsSnapshot(snapshot);
 
-        // 모든 세션의 model 정보를 에이전트에 매핑
+        // 메인 에이전트 세션의 model 정보만 에이전트에 매핑
+        // (서브에이전트 세션은 제외 — 서브에이전트 모델이 부모를 덮어쓰는 것 방지)
         const store = useOfficeStore.getState();
         for (const session of result.sessions ?? []) {
-          if (session.model) {
+          if (session.model && !isSubAgentSessionKey(session.key)) {
             const agentId = extractAgentIdFromSessionKey(session.key);
             if (agentId && store.agents.has(agentId)) {
               store.updateAgent(agentId, { model: session.model });
