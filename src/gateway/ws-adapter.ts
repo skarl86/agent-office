@@ -170,11 +170,12 @@ export class WsAdapter implements GatewayAdapter {
   }
 
   async skillsStatus(agentId?: string): Promise<SkillInfo[]> {
-    const result = await this.rpcClient.request<{ skills?: SkillInfo[] }>(
+    const result = await this.rpcClient.request<GatewaySkillsStatusResult>(
       "skills.status",
       agentId ? { agentId } : {},
     );
-    return Array.isArray(result) ? result : (result?.skills ?? []);
+    const raw = Array.isArray(result) ? result : (result?.skills ?? []);
+    return mapSkillEntries(raw);
   }
 
   async skillsInstall(name: string, installId: string): Promise<SkillInstallResult> {
@@ -369,4 +370,59 @@ function flattenChannelAccounts(result: GatewayChannelsStatusResult): ChannelInf
   }
 
   return channels;
+}
+
+// --- Skills mapping ---
+
+interface GatewaySkillEntry {
+  skillKey?: string;
+  name?: string;
+  description?: string;
+  disabled?: boolean;
+  bundled?: boolean;
+  core?: boolean;
+  emoji?: string;
+  version?: string;
+  author?: string;
+  source?: string;
+  homepage?: string;
+  primaryEnv?: string;
+  always?: boolean;
+  eligible?: boolean;
+  blockedByAllowlist?: boolean;
+  requirements?: { bins?: string[]; env?: string[] };
+  missing?: { bins?: string[]; env?: string[] };
+  install?: Array<{ id: string; kind: string; label: string }>;
+  configChecks?: Array<{ path: string; satisfied: boolean }>;
+  config?: Record<string, unknown>;
+}
+
+interface GatewaySkillsStatusResult {
+  skills?: GatewaySkillEntry[];
+}
+
+function mapSkillEntries(entries: GatewaySkillEntry[]): SkillInfo[] {
+  return entries.map((e) => ({
+    id: e.skillKey ?? "",
+    slug: e.skillKey ?? "",
+    name: e.name ?? e.skillKey ?? "",
+    description: e.description ?? "",
+    enabled: !e.disabled && (e.eligible ?? false),
+    icon: e.emoji ?? "📦",
+    version: e.version ?? "",
+    author: e.author,
+    isCore: e.core,
+    isBundled: e.bundled,
+    config: e.config,
+    source: e.source,
+    homepage: e.homepage,
+    primaryEnv: e.primaryEnv,
+    always: e.always,
+    eligible: e.eligible,
+    blockedByAllowlist: e.blockedByAllowlist,
+    requirements: e.requirements,
+    missing: e.missing,
+    installOptions: e.install,
+    configChecks: e.configChecks,
+  }));
 }
