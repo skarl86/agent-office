@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Settings, BrainCircuit, Palette, Server, Info } from "lucide-react";
 import { useConfigStore } from "@/store/console-stores/config-store";
+import { useOfficeStore } from "@/store/office-store";
 import { ProvidersSection } from "@/components/console/settings/ProvidersSection";
 import { AppearanceSection } from "@/components/console/settings/AppearanceSection";
 import { GatewaySection } from "@/components/console/settings/GatewaySection";
@@ -21,11 +22,14 @@ export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("providers");
   const fetchConfig = useConfigStore((s) => s.fetchConfig);
   const fetchStatus = useConfigStore((s) => s.fetchStatus);
+  const connectionStatus = useOfficeStore((s) => s.connectionStatus);
 
   useEffect(() => {
-    void fetchConfig();
-    void fetchStatus();
-  }, [fetchConfig, fetchStatus]);
+    if (connectionStatus === "connected") {
+      void fetchConfig();
+      void fetchStatus();
+    }
+  }, [fetchConfig, fetchStatus, connectionStatus]);
 
   return (
     <div className="space-y-6 p-6">

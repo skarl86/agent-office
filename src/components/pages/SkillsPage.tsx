@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Puzzle, RefreshCw, Search } from "lucide-react";
 import { useSkillsStore, filterInstalledSkills } from "@/store/console-stores/skills-store";
+import { useOfficeStore } from "@/store/office-store";
 import { SkillCard } from "@/components/console/skills/SkillCard";
 import { SkillDetailDialog } from "@/components/console/skills/SkillDetailDialog";
 import { LoadingState } from "@/components/console/shared/LoadingState";
@@ -30,11 +31,14 @@ export function SkillsPage() {
   const openDetail = useSkillsStore((s) => s.openDetail);
   const closeDetail = useSkillsStore((s) => s.closeDetail);
 
+  const connectionStatus = useOfficeStore((s) => s.connectionStatus);
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    void fetchSkills();
-  }, [fetchSkills]);
+    if (connectionStatus === "connected") {
+      void fetchSkills();
+    }
+  }, [fetchSkills, connectionStatus]);
 
   const filteredSkills = filterInstalledSkills(skills, query, sourceFilter);
 

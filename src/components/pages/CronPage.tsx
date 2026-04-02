@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Clock, Plus, RefreshCw } from "lucide-react";
 import { useCronStore } from "@/store/console-stores/cron-store";
+import { useOfficeStore } from "@/store/office-store";
 import { CronTaskCard } from "@/components/console/cron/CronTaskCard";
 import { CronStatsBar } from "@/components/console/cron/CronStatsBar";
 import { LoadingState } from "@/components/console/shared/LoadingState";
@@ -18,12 +19,14 @@ export function CronPage() {
   const runTask = useCronStore((s) => s.runTask);
   const updateTask = useCronStore((s) => s.updateTask);
   const openDialog = useCronStore((s) => s.openDialog);
+  const connectionStatus = useOfficeStore((s) => s.connectionStatus);
 
   useEffect(() => {
+    if (connectionStatus !== "connected") return;
     void fetchTasks();
     const dispose = useCronStore.getState().initEventListeners();
     return dispose;
-  }, [fetchTasks]);
+  }, [fetchTasks, connectionStatus]);
 
   const handleToggle = (id: string, enabled: boolean) => {
     void updateTask(id, { enabled });
