@@ -1,0 +1,655 @@
+import { useMemo } from "react";
+import type { VisualAgent } from "@/gateway/types";
+import {
+  SVG_WIDTH,
+  SVG_HEIGHT,
+  OFFICE,
+  ZONES,
+  ZONE_COLORS,
+  ZONE_COLORS_DARK,
+} from "@/lib/constants";
+import { calculateDeskSlots } from "@/lib/position-allocator";
+import { useOfficeStore } from "@/store/office-store";
+import { detectMeetingGroups, calculateMeetingSeats } from "@/store/meeting-manager";
+import { AgentAvatar } from "./AgentAvatar";
+import { ConnectionLine } from "./ConnectionLine";
+import { DeskUnit } from "./DeskUnit";
+import { MeetingTable, Sofa, Plant, CoffeeCup, Chair } from "./furniture";
+import { ZoneLabel } from "./ZoneLabel";
+
+export function FloorPlan() {
+  const agents = useOfficeStore((s) => s.agents);
+  const links = useOfficeStore((s) => s.links);
+  const theme = useOfficeStore((s) => s.theme);
+  const maxSubAgents = useOfficeStore((s) => s.maxSubAgents);
+
+  const agentList = Array.from(agents.values());
+  const isDark = theme === "dark";
+  const colors = isDark ? ZONE_COLORS_DARK : ZONE_COLORS;
+
+  const deskAgents = useMemo(
+    () => agentList.filter((a) => a.zone === "desk" && !a.isSubAgent && !a.movement && a.confirmed),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [agentList],
+  );
+  const hotDeskAgents = useMemo(
+    () => agentList.filter((a) => a.zone === "hotDesk" && !a.movement),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [agentList],
+  );
+  const loungeAgents = useMemo(
+    () => agentList.filter((a) => a.zone === "lounge" && !a.movement && !a.isPlaceholder),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [agentList],
+  );
+  const meetingAgents = useMemo(
+    () => agentList.filter((a) => a.zone === "meeting" && !a.movement && !a.isPlaceholder),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [agentList],
+  );
+  const walkingAgents = useMemo(
+    () => agentList.filter((a) => a.movement !== null && !a.isPlaceholder),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [agentList],
+  );
+  const corridorAgents = useMemo(
+    () => agentList.filter((a) => a.zone === "corridor" && !a.movement && !a.isPlaceholder),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [agentList],
+  );
+
+  const deskSlots = useMemo(
+    () => calculateDeskSlots(ZONES.desk, deskAgents.length, Math.max(deskAgents.length, 4)),
+    [deskAgents.length],
+  );
+
+  const hotDeskSlots = useMemo(
+    () =>
+      calculateDeskSlots(
+        ZONES.hotDesk,
+        hotDeskAgents.length,
+        Math.max(hotDeskAgents.length, maxSubAgents),
+      ),
+    [hotDeskAgents.length, maxSubAgents],
+  );
+
+  const meetingGroups = useMemo(
+    () => detectMeetingGroups(links, agents),
+    [links, agents],
+  );
+
+  const meetingGroupTableData = useMemo(() => {
+    const MEETING_ZONE = ZONES.meeting;
+    const tableCenters = [
+      { x: MEETING_ZONE.x + MEETING_ZONE.width / 2, y: MEETING_ZONE.y + MEETING_ZONE.height / 2 },
+      {
+        x: MEETING_ZONE.x + MEETING_ZONE.width * 0.3,
+        y: MEETING_ZONE.y + MEETING_ZONE.height * 0.3,
+      },
+      {
+        x: MEETING_ZONE.x + MEETING_ZONE.width * 0.7,
+        y: MEETING_ZONE.y + MEETING_ZONE.height * 0.7,
+      },
+    ];
+    return meetingGroups.map((group, i) => {
+      const center = tableCenters[i % tableCenters.length];
+      const seatsMap = calculateMeetingSeats(group, i);
+      const agentsInGroup = group.agentIds
+        .map((id) => agents.get(id))
+        .filter((a): a is VisualAgent => a !== undefined);
+      return { group, center, seatsMap, agentsInGroup };
+    });
+  }, [meetingGroups, agents]);
+
+  const defaultMeetingCenter = {
+    x: ZONES.meeting.x + ZONES.meeting.width / 2,
+    y: ZONES.meeting.y + ZONES.meeting.height / 2,
+  };
+
+  return (
+    <div className="relative h-full w-full bg-gray-100 dark:bg-gray-950">
+      <svg
+        viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
+        className="h-full w-full"
+        preserveAspectRatio="xMidYMid meet"
+      >
+        <defs>
+          <filter id="building-shadow" x="-3%" y="-3%" width="106%" height="106%">
+            <feDropShadow dx="0" dy="3" stdDeviation="6" floodOpacity={isDark ? 0.5 : 0.12} />
+          </filter>
+          <pattern id="corridor-tiles" width="28" height="28" patternUnits="userSpaceOnUse">
+            <rect width="28" height="28" fill={colors.corridor} />
+            <rect
+              x="0.5"
+              y="0.5"
+              width="27"
+              height="27"
+              fill="none"
+              stroke={isDark ? "#1f2937" : "#d5dbe3"}
+              strokeWidth="0.3"
+              rx="1"
+            />
+          </pattern>
+          <pattern id="lounge-carpet" width="6" height="6" patternUnits="userSpaceOnUse">
+            <rect width="6" height="6" fill={colors.lounge} />
+            <circle cx="3" cy="3" r="0.5" fill={isDark ? "#2d2540" : "#e5e0ed"} opacity="0.4" />
+          </pattern>
+        </defs>
+
+        {/* Building shell */}
+        <rect
+          x={OFFICE.x}
+          y={OFFICE.y}
+          width={OFFICE.width}
+          height={OFFICE.height}
+          rx={OFFICE.cornerRadius}
+          fill={colors.corridor}
+          stroke={colors.wall}
+          strokeWidth={OFFICE.wallThickness}
+          filter="url(#building-shadow)"
+        />
+
+        {/* Corridor floor tiles */}
+        <CorridorFloor isDark={isDark} />
+
+        {/* Zone floor fills */}
+        {Object.entries(ZONES).map(([key, zone]) => (
+          <rect
+            key={`floor-${key}`}
+            x={zone.x}
+            y={zone.y}
+            width={zone.width}
+            height={zone.height}
+            fill={
+              key === "lounge" ? "url(#lounge-carpet)" : colors[key as keyof typeof ZONE_COLORS]
+            }
+          />
+        ))}
+
+        {/* Internal partition walls */}
+        <PartitionWalls isDark={isDark} />
+
+        {/* Door openings */}
+        <DoorOpenings isDark={isDark} />
+
+        {/* Zone labels */}
+        {Object.entries(ZONES).map(([key, zone]) => (
+          <ZoneLabel key={`label-${key}`} zone={zone} zoneKey={key as keyof typeof ZONES} />
+        ))}
+
+        {/* Desk zone furniture */}
+        <DeskZoneFurniture deskSlots={deskSlots} deskAgents={deskAgents} />
+
+        {/* Meeting zone furniture */}
+        {meetingGroupTableData.length === 0 ? (
+          <>
+            <MeetingTable
+              x={defaultMeetingCenter.x}
+              y={defaultMeetingCenter.y}
+              radius={60}
+              isDark={isDark}
+            />
+            <MeetingChairs
+              seats={[]}
+              meetingAgentCount={0}
+              tableCenter={defaultMeetingCenter}
+              isDark={isDark}
+            />
+          </>
+        ) : (
+          meetingGroupTableData.map((tableData, i) => {
+            const radius = Math.min(
+              55 + tableData.agentsInGroup.length * 8,
+              Math.min(ZONES.meeting.width, ZONES.meeting.height) /
+                (meetingGroupTableData.length > 1 ? 3.5 : 2.3) -
+                20,
+            );
+            const seatPositions = tableData.agentsInGroup.map((a) => a.position);
+            return (
+              <g key={`meeting-table-group-${i}`}>
+                <MeetingTable
+                  x={tableData.center.x}
+                  y={tableData.center.y}
+                  radius={radius}
+                  isDark={isDark}
+                />
+                <MeetingChairs
+                  seats={seatPositions}
+                  meetingAgentCount={tableData.agentsInGroup.length}
+                  tableCenter={tableData.center}
+                  isDark={isDark}
+                />
+              </g>
+            );
+          })
+        )}
+
+        {/* Hot desk zone furniture */}
+        <HotDeskZoneFurniture slots={hotDeskSlots} agents={hotDeskAgents} />
+
+        {/* Lounge decor */}
+        <LoungeDecor isDark={isDark} />
+
+        {/* Lounge idle agents */}
+        {loungeAgents.map((agent) => (
+          <AgentAvatar key={`lounge-${agent.id}`} agent={agent} />
+        ))}
+
+        {/* Entrance door */}
+        <EntranceDoor isDark={isDark} />
+
+        {/* Collaboration lines */}
+        {links.map((link) => {
+          const source = agents.get(link.sourceId);
+          const target = agents.get(link.targetId);
+          if (!source || !target) return null;
+          return (
+            <ConnectionLine
+              key={`${link.sourceId}-${link.targetId}`}
+              x1={source.position.x}
+              y1={source.position.y}
+              x2={target.position.x}
+              y2={target.position.y}
+              strength={link.strength}
+            />
+          );
+        })}
+
+        {/* Meeting agents */}
+        {meetingAgents.map((agent) => (
+          <AgentAvatar key={agent.id} agent={agent} />
+        ))}
+
+        {/* Corridor agents */}
+        {corridorAgents.map((agent) => (
+          <AgentAvatar key={`corridor-${agent.id}`} agent={agent} />
+        ))}
+
+        {/* Walking agents */}
+        {walkingAgents.map((agent) => (
+          <AgentAvatar key={`walk-${agent.id}`} agent={agent} />
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+/* ═══ Sub-components ═══ */
+
+function CorridorFloor({ isDark }: { isDark: boolean }) {
+  const cw = OFFICE.corridorWidth;
+  const hCorrX = OFFICE.x;
+  const hCorrY = OFFICE.y + (OFFICE.height - cw) / 2;
+  const vCorrX = OFFICE.x + (OFFICE.width - cw) / 2;
+  const vCorrY = OFFICE.y;
+
+  return (
+    <g>
+      <rect x={hCorrX} y={hCorrY} width={OFFICE.width} height={cw} fill="url(#corridor-tiles)" />
+      <rect x={vCorrX} y={vCorrY} width={cw} height={OFFICE.height} fill="url(#corridor-tiles)" />
+      <line
+        x1={hCorrX}
+        y1={hCorrY + cw / 2}
+        x2={hCorrX + OFFICE.width}
+        y2={hCorrY + cw / 2}
+        stroke={isDark ? "#334155" : "#c8d0dc"}
+        strokeWidth={0.5}
+        strokeDasharray="8 6"
+        opacity={0.6}
+      />
+      <line
+        x1={vCorrX + cw / 2}
+        y1={vCorrY}
+        x2={vCorrX + cw / 2}
+        y2={vCorrY + OFFICE.height}
+        stroke={isDark ? "#334155" : "#c8d0dc"}
+        strokeWidth={0.5}
+        strokeDasharray="8 6"
+        opacity={0.6}
+      />
+    </g>
+  );
+}
+
+function PartitionWalls({ isDark }: { isDark: boolean }) {
+  const wallColor = isDark ? "#475569" : "#8b9bb0";
+  const fillColor = isDark ? "#334155" : "#c8d0dc";
+  const wallW = 4;
+  const cw = OFFICE.corridorWidth;
+  const midX = OFFICE.x + (OFFICE.width - cw) / 2;
+  const midY = OFFICE.y + (OFFICE.height - cw) / 2;
+
+  const walls = [
+    { x: midX - wallW / 2, y: OFFICE.y, w: wallW, h: midY - OFFICE.y },
+    { x: midX - wallW / 2, y: midY + cw, w: wallW, h: OFFICE.y + OFFICE.height - midY - cw },
+    { x: midX + cw - wallW / 2, y: OFFICE.y, w: wallW, h: midY - OFFICE.y },
+    { x: midX + cw - wallW / 2, y: midY + cw, w: wallW, h: OFFICE.y + OFFICE.height - midY - cw },
+    { x: OFFICE.x, y: midY - wallW / 2, w: midX - OFFICE.x, h: wallW },
+    { x: midX + cw, y: midY - wallW / 2, w: OFFICE.x + OFFICE.width - midX - cw, h: wallW },
+    { x: OFFICE.x, y: midY + cw - wallW / 2, w: midX - OFFICE.x, h: wallW },
+    {
+      x: midX + cw,
+      y: midY + cw - wallW / 2,
+      w: OFFICE.x + OFFICE.width - midX - cw,
+      h: wallW,
+    },
+  ];
+
+  return (
+    <g>
+      {walls.map((w, i) => (
+        <rect
+          key={`wall-${i}`}
+          x={w.x}
+          y={w.y}
+          width={w.w}
+          height={w.h}
+          fill={fillColor}
+          stroke={wallColor}
+          strokeWidth={0.5}
+        />
+      ))}
+    </g>
+  );
+}
+
+function DoorOpenings({ isDark }: { isDark: boolean }) {
+  const cw = OFFICE.corridorWidth;
+  const midX = OFFICE.x + (OFFICE.width - cw) / 2;
+  const midY = OFFICE.y + (OFFICE.height - cw) / 2;
+  const doorWidth = 40;
+  const doorColor = isDark ? ZONE_COLORS_DARK.corridor : ZONE_COLORS.corridor;
+  const arcColor = isDark ? "#64748b" : "#94a3b8";
+
+  const doors = [
+    { cx: (OFFICE.x + midX) / 2, cy: midY, horizontal: true },
+    { cx: (midX + cw + OFFICE.x + OFFICE.width) / 2, cy: midY, horizontal: true },
+    { cx: (OFFICE.x + midX) / 2, cy: midY + cw, horizontal: true },
+    { cx: (midX + cw + OFFICE.x + OFFICE.width) / 2, cy: midY + cw, horizontal: true },
+    { cx: midX, cy: (OFFICE.y + midY) / 2, horizontal: false },
+    { cx: midX + cw, cy: (OFFICE.y + midY) / 2, horizontal: false },
+    { cx: midX, cy: (midY + cw + OFFICE.y + OFFICE.height) / 2, horizontal: false },
+    { cx: midX + cw, cy: (midY + cw + OFFICE.y + OFFICE.height) / 2, horizontal: false },
+  ];
+
+  return (
+    <g>
+      {doors.map((d, i) => {
+        const half = doorWidth / 2;
+        if (d.horizontal) {
+          return (
+            <g key={`door-${i}`}>
+              <rect x={d.cx - half} y={d.cy - 3} width={doorWidth} height={6} fill={doorColor} />
+              <path
+                d={`M ${d.cx - half} ${d.cy} A ${half} ${half} 0 0 1 ${d.cx + half} ${d.cy}`}
+                fill="none"
+                stroke={arcColor}
+                strokeWidth={0.8}
+                strokeDasharray="3 2"
+                opacity={0.5}
+              />
+            </g>
+          );
+        }
+        return (
+          <g key={`door-${i}`}>
+            <rect x={d.cx - 3} y={d.cy - half} width={6} height={doorWidth} fill={doorColor} />
+            <path
+              d={`M ${d.cx} ${d.cy - half} A ${half} ${half} 0 0 1 ${d.cx} ${d.cy + half}`}
+              fill="none"
+              stroke={arcColor}
+              strokeWidth={0.8}
+              strokeDasharray="3 2"
+              opacity={0.5}
+            />
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+function DeskZoneFurniture({
+  deskSlots,
+  deskAgents,
+}: {
+  deskSlots: Array<{ unitX: number; unitY: number }>;
+  deskAgents: VisualAgent[];
+}) {
+  const agentBySlot = useMemo(() => {
+    const map = new Map<number, VisualAgent>();
+    for (const agent of deskAgents) {
+      let hash = 0;
+      for (let i = 0; i < agent.id.length; i++) {
+        hash = ((hash << 5) - hash + agent.id.charCodeAt(i)) | 0;
+      }
+      const idx = Math.abs(hash) % Math.max(deskSlots.length, 1);
+      let slot = idx;
+      while (map.has(slot)) {
+        slot = (slot + 1) % Math.max(deskSlots.length, 1);
+      }
+      map.set(slot, agent);
+    }
+    return map;
+  }, [deskAgents, deskSlots.length]);
+
+  return (
+    <g>
+      {deskSlots.map((slot, i) => (
+        <DeskUnit
+          key={`desk-${i}`}
+          x={slot.unitX}
+          y={slot.unitY}
+          agent={agentBySlot.get(i) ?? null}
+        />
+      ))}
+    </g>
+  );
+}
+
+function HotDeskZoneFurniture({
+  slots,
+  agents,
+}: {
+  slots: Array<{ unitX: number; unitY: number }>;
+  agents: VisualAgent[];
+}) {
+  return (
+    <g>
+      {slots.map((slot, i) => (
+        <DeskUnit key={`hotdesk-${i}`} x={slot.unitX} y={slot.unitY} agent={agents[i] ?? null} />
+      ))}
+    </g>
+  );
+}
+
+function MeetingChairs({
+  seats,
+  meetingAgentCount,
+  tableCenter,
+  isDark,
+}: {
+  seats: Array<{ x: number; y: number }>;
+  meetingAgentCount: number;
+  tableCenter: { x: number; y: number };
+  isDark: boolean;
+}) {
+  if (meetingAgentCount > 0) {
+    return (
+      <g>
+        {seats.map((s, i) => (
+          <Chair key={`mc-${i}`} x={s.x} y={s.y} isDark={isDark} />
+        ))}
+      </g>
+    );
+  }
+
+  const emptyCount = 6;
+  const emptyRadius = 100;
+  return (
+    <g>
+      {Array.from({ length: emptyCount }, (_, i) => {
+        const angle = (2 * Math.PI * i) / emptyCount - Math.PI / 2;
+        return (
+          <Chair
+            key={`mc-empty-${i}`}
+            x={Math.round(tableCenter.x + Math.cos(angle) * emptyRadius)}
+            y={Math.round(tableCenter.y + Math.sin(angle) * emptyRadius)}
+            isDark={isDark}
+          />
+        );
+      })}
+    </g>
+  );
+}
+
+function LoungeDecor({ isDark }: { isDark: boolean }) {
+  const lz = ZONES.lounge;
+  const cx = lz.x + lz.width / 2;
+
+  const wallColor = isDark ? "#334155" : "#5a6878";
+  const deskColor = isDark ? "#475569" : "#8494a7";
+  const deskTop = isDark ? "#64748b" : "#a5b4c8";
+  const logoTextColor = isDark ? "#94a3b8" : "#ffffff";
+  const logoBg = isDark ? "#1e293b" : "#3b4f6b";
+
+  const bgWallW = 200;
+  const bgWallH = 36;
+  const bgWallY = lz.y + lz.height * 0.52;
+
+  const deskW = 160;
+  const deskH = 24;
+  const deskY = bgWallY + bgWallH + 14;
+
+  return (
+    <g>
+      <Sofa x={lz.x + 100} y={lz.y + 60} rotation={0} isDark={isDark} />
+      <Sofa x={lz.x + 280} y={lz.y + 60} rotation={0} isDark={isDark} />
+      <Sofa x={lz.x + 100} y={lz.y + 140} rotation={180} isDark={isDark} />
+      <CoffeeCup x={lz.x + 190} y={lz.y + 100} />
+      <CoffeeCup x={lz.x + 100} y={lz.y + 100} />
+      <Sofa x={lz.x + 440} y={lz.y + 100} rotation={90} isDark={isDark} />
+
+      {/* Logo backdrop wall */}
+      <rect
+        x={cx - bgWallW / 2}
+        y={bgWallY}
+        width={bgWallW}
+        height={bgWallH}
+        rx={4}
+        fill={logoBg}
+      />
+      <rect
+        x={cx - bgWallW / 2}
+        y={bgWallY}
+        width={bgWallW}
+        height={3}
+        rx={1.5}
+        fill={isDark ? "#64748b" : "#7a9bc0"}
+      />
+      <text
+        x={cx}
+        y={bgWallY + bgWallH / 2 + 5}
+        textAnchor="middle"
+        fill={logoTextColor}
+        fontSize={14}
+        fontWeight={700}
+        fontFamily="system-ui, sans-serif"
+        letterSpacing="0.12em"
+      >
+        OpenClaw
+      </text>
+
+      {/* Reception desk */}
+      <rect
+        x={cx - deskW / 2}
+        y={deskY}
+        width={deskW}
+        height={deskH}
+        rx={12}
+        fill={deskColor}
+        stroke={wallColor}
+        strokeWidth={1}
+      />
+      <rect
+        x={cx - deskW / 2 + 4}
+        y={deskY + 3}
+        width={deskW - 8}
+        height={deskH - 6}
+        rx={9}
+        fill={deskTop}
+        opacity={0.5}
+      />
+
+      {/* Decorative plants */}
+      <Plant x={cx - bgWallW / 2 - 30} y={bgWallY + bgWallH / 2} />
+      <Plant x={cx + bgWallW / 2 + 30} y={bgWallY + bgWallH / 2} />
+      <Plant x={lz.x + 40} y={lz.y + lz.height - 50} />
+      <Plant x={lz.x + lz.width - 40} y={lz.y + lz.height - 50} />
+    </g>
+  );
+}
+
+function EntranceDoor({ isDark }: { isDark: boolean }) {
+  const lz = ZONES.lounge;
+  const doorCX = lz.x + lz.width / 2;
+  const doorY = OFFICE.y + OFFICE.height;
+  const doorW = 70;
+  const half = doorW / 2;
+
+  const bgColor = isDark ? ZONE_COLORS_DARK.lounge : ZONE_COLORS.lounge;
+  const arcColor = isDark ? "#64748b" : "#8b9bb0";
+  const matColor = isDark ? "#374151" : "#b0a090";
+  const textColor = isDark ? "#64748b" : "#94a3b8";
+
+  return (
+    <g>
+      <rect
+        x={doorCX - half - 2}
+        y={doorY - OFFICE.wallThickness - 1}
+        width={doorW + 4}
+        height={OFFICE.wallThickness + 4}
+        fill={bgColor}
+      />
+      <rect x={doorCX - half - 3} y={doorY - 10} width={3} height={12} rx={1} fill={arcColor} />
+      <rect x={doorCX + half} y={doorY - 10} width={3} height={12} rx={1} fill={arcColor} />
+      <path
+        d={`M ${doorCX - half} ${doorY} A ${half} ${half} 0 0 0 ${doorCX} ${doorY - half}`}
+        fill="none"
+        stroke={arcColor}
+        strokeWidth={0.8}
+        strokeDasharray="4 3"
+        opacity={0.5}
+      />
+      <path
+        d={`M ${doorCX + half} ${doorY} A ${half} ${half} 0 0 1 ${doorCX} ${doorY - half}`}
+        fill="none"
+        stroke={arcColor}
+        strokeWidth={0.8}
+        strokeDasharray="4 3"
+        opacity={0.5}
+      />
+      <rect
+        x={doorCX - 30}
+        y={doorY - 18}
+        width={60}
+        height={12}
+        rx={3}
+        fill={matColor}
+        opacity={0.5}
+      />
+      <text
+        x={doorCX}
+        y={doorY + 14}
+        textAnchor="middle"
+        fill={textColor}
+        fontSize={9}
+        fontWeight={600}
+        fontFamily="system-ui, sans-serif"
+        letterSpacing="0.15em"
+      >
+        ENTRANCE
+      </text>
+    </g>
+  );
+}

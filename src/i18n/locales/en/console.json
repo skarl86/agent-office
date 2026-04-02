@@ -1,0 +1,251 @@
+{
+  "dashboard": {
+    "title": "Dashboard",
+    "description": "System overview: Gateway status, channel connections, skill activation",
+    "loading": "Loading dashboard data...",
+    "placeholder": "Dashboard content coming soon..."
+  },
+  "channels": {
+    "title": "Channels",
+    "description": "Message channel management: Telegram, Discord, Line, etc.",
+    "placeholder": "Channel management coming soon...",
+    "loading": "Loading channels...",
+    "refresh": "Refresh",
+    "stats": {
+      "total": "Total",
+      "connected": "Connected",
+      "errors": "Errors"
+    },
+    "card": {
+      "lastConnected": "Last connected: {{time}}",
+      "details": "Details",
+      "logout": "Logout"
+    },
+    "available": {
+      "title": "Available Channels",
+      "configured": "Configured",
+      "add": "Add"
+    },
+    "types": {
+      "telegram": "Telegram",
+      "discord": "Discord",
+      "whatsapp": "WhatsApp",
+      "signal": "Signal",
+      "feishu": "Feishu",
+      "imessage": "iMessage",
+      "matrix": "Matrix",
+      "line": "Line",
+      "msteams": "MS Teams",
+      "googlechat": "Google Chat",
+      "mattermost": "Mattermost"
+    },
+    "fields": {
+      "botToken": "Bot Token",
+      "applicationId": "Application ID",
+      "phoneNumber": "Phone Number",
+      "appId": "App ID",
+      "appSecret": "App Secret",
+      "homeserver": "Homeserver",
+      "accessToken": "Access Token",
+      "channelAccessToken": "Channel Access Token",
+      "channelSecret": "Channel Secret",
+      "appPassword": "App Password",
+      "serviceAccount": "Service Account JSON",
+      "serverUrl": "Server URL"
+    },
+    "placeholders": {
+      "botToken": "Enter Bot Token",
+      "applicationId": "Enter Application ID",
+      "phoneNumber": "Enter phone number",
+      "appId": "Enter App ID",
+      "appSecret": "Enter App Secret",
+      "homeserver": "Enter homeserver URL",
+      "accessToken": "Enter Access Token",
+      "channelAccessToken": "Enter Channel Access Token",
+      "channelSecret": "Enter Channel Secret",
+      "appPassword": "Enter App Password",
+      "serviceAccount": "Enter Service Account JSON",
+      "serverUrl": "Enter server URL"
+    }
+  },
+  "skills": {
+    "title": "Skills",
+    "description": "Agent skill management and configuration",
+    "placeholder": "Skill marketplace coming soon...",
+    "loading": "Loading skills...",
+    "refresh": "Refresh",
+    "searchPlaceholder": "Search skills...",
+    "filter": {
+      "all": "All",
+      "builtIn": "Built-in",
+      "marketplace": "Marketplace"
+    },
+    "source": {
+      "builtIn": "Built-in",
+      "marketplace": "Marketplace"
+    },
+    "empty": {
+      "title": "No skills found",
+      "description": "No installed skills available."
+    },
+    "card": {
+      "missingDeps": "Some dependencies missing",
+      "configure": "Configure",
+      "install": "Install",
+      "installing": "Installing...",
+      "coreProtected": "Core skills cannot be disabled"
+    },
+    "detail": {
+      "info": "Info",
+      "config": "Config",
+      "source": "Source",
+      "version": "Version",
+      "author": "Author",
+      "primaryEnv": "Primary Env",
+      "homepage": "Homepage",
+      "requirements": "Requirements",
+      "apiKeyPlaceholder": "Enter API key",
+      "envVars": "Environment Variables",
+      "addVariable": "Add Variable",
+      "noEnvVars": "No environment variables",
+      "keyPlaceholder": "KEY",
+      "valuePlaceholder": "VALUE",
+      "configChecks": "Config Checks",
+      "noConfig": "No configurable settings",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "save": "Save",
+      "saving": "Saving...",
+      "close": "Close"
+    },
+    "toast": {
+      "enabled": "Skill \"{{name}}\" enabled",
+      "disabled": "Skill \"{{name}}\" disabled",
+      "toggleFailed": "Failed to toggle skill",
+      "installSuccess": "Skill \"{{name}}\" installed",
+      "installFailed": "Failed to install skill \"{{name}}\"",
+      "installWarning": "Installation warning"
+    }
+  },
+  "cron": {
+    "title": "Cron Jobs",
+    "description": "Scheduled task management",
+    "placeholder": "Cron job management coming soon...",
+    "loading": "Loading cron jobs...",
+    "refresh": "Refresh",
+    "addTask": "Add Task",
+    "stats": {
+      "total": "Total",
+      "active": "Active",
+      "paused": "Paused",
+      "failed": "Failed"
+    },
+    "card": {
+      "lastRun": "Last run",
+      "nextRun": "Next run",
+      "runNow": "Run now",
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "empty": {
+      "title": "No cron jobs",
+      "description": "No scheduled tasks registered."
+    }
+  },
+  "agents": {
+    "title": "Agents",
+    "description": "Agent list and configuration",
+    "placeholder": "Agent management coming soon..."
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "System settings and Gateway configuration",
+    "placeholder": "Settings page coming soon...",
+    "tabs": {
+      "providers": "AI Providers",
+      "appearance": "Appearance",
+      "gateway": "Gateway",
+      "about": "About"
+    },
+    "providers": {
+      "title": "AI Providers",
+      "description": "AI model provider settings",
+      "add": "Add Provider",
+      "empty": "No providers configured",
+      "emptyHint": "Add an AI provider to start using models.",
+      "modelCount": "{{count}} models",
+      "apiKeyConfigured": "API key configured",
+      "apiKeyNotConfigured": "No API key",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteTitle": "Delete Provider",
+      "deleteDescription": "Delete provider \"{{name}}\"?",
+      "models": {
+        "reasoning": "Reasoning model",
+        "input_image": "Image input supported"
+      }
+    },
+    "appearance": {
+      "title": "Appearance",
+      "theme": "Theme",
+      "themeLight": "Light",
+      "themeDark": "Dark",
+      "themeSystem": "System",
+      "language": "Language",
+      "langKo": "한국어",
+      "langEn": "English"
+    },
+    "gateway": {
+      "title": "Gateway Info",
+      "refresh": "Refresh",
+      "notConnected": "Not connected to Gateway",
+      "notConnectedHint": "Make sure the Gateway is running.",
+      "version": "Version",
+      "port": "Port",
+      "uptime": "Uptime",
+      "uptimeFormat": "{{hours}}h {{minutes}}m",
+      "mode": "Mode",
+      "nodeVersion": "Node Version",
+      "platform": "Platform"
+    },
+    "about": {
+      "title": "About",
+      "appName": "Agent Office",
+      "tagline": "OpenClaw Agent Management Console",
+      "version": "Version",
+      "docs": "Documentation",
+      "github": "GitHub"
+    }
+  },
+  "chat": {
+    "title": "Chat",
+    "placeholder": "Chat workspace coming soon..."
+  },
+  "toast": {
+    "showDetail": "Show detail",
+    "hideDetail": "Hide detail"
+  },
+  "viewModels": {
+    "statusLabels": {
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "connecting": "Connecting",
+      "error": "Error"
+    },
+    "skillSource": {
+      "builtIn": "Built-in",
+      "marketplace": "Marketplace"
+    },
+    "taskStatus": {
+      "active": "Active",
+      "paused": "Paused"
+    },
+    "schedule": {
+      "every": "Every {{minutes}}min",
+      "at": "At {{time}}",
+      "daily": "Daily at {{time}}",
+      "weekly": "Weekly on {{day}} at {{time}}",
+      "unknown": "Unknown"
+    }
+  }
+}

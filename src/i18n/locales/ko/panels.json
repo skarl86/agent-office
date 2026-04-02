@@ -1,0 +1,22 @@
+{
+  "metrics": {
+    "activeAgents": "활성 에이전트",
+    "totalTokens": "총 토큰",
+    "collaboration": "협업도",
+    "tokenRate": "토큰 속도",
+    "tokenRateUnit": "/분",
+    "costLabel": "누적 비용"
+  },
+  "agentDetail": {
+    "title": "에이전트 상세",
+    "deselect": "선택 해제",
+    "toolCallHistory": "도구 호출 이력",
+    "zone": "구역",
+    "toolCalls": "도구 호출",
+    "parent": "상위 에이전트",
+    "eventHistory": "이벤트 히스토리"
+  },
+  "eventTimeline": {
+    "newEvents": "새 이벤트 ↓"
+  }
+}

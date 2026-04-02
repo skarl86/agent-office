@@ -1,0 +1,83 @@
+{
+  "status": {
+    "connecting": "Connecting...",
+    "connected": "Connected",
+    "reconnecting": "Reconnecting",
+    "disconnected": "Disconnected",
+    "error": "Connection Error",
+    "active": "Active",
+    "paused": "Paused",
+    "ok": "OK",
+    "failed": "Failed",
+    "running": "Running",
+    "pending": "Pending",
+    "disabled": "Disabled"
+  },
+  "actions": {
+    "send": "Send",
+    "cancel": "Cancel",
+    "close": "Close",
+    "confirm": "Confirm",
+    "stop": "Stop",
+    "retry": "Retry",
+    "dismiss": "Dismiss",
+    "save": "Save",
+    "delete": "Delete",
+    "refresh": "Refresh",
+    "create": "Create",
+    "edit": "Edit"
+  },
+  "time": {
+    "justNow": "Just now",
+    "secondsAgo": "{{count}}s ago",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "running": "Running {{seconds}}s",
+    "runningMinutes": "Running {{minutes}}m {{seconds}}s"
+  },
+  "empty": {
+    "noData": "No data",
+    "noCostData": "No cost data",
+    "noActivityData": "No activity data",
+    "noRelationData": "No agent relationship data",
+    "noEvents": "No events",
+    "noMatchingAgents": "No matching agents",
+    "noSubAgents": "No sub-agents"
+  },
+  "agent": {
+    "statusLabels": {
+      "idle": "Idle",
+      "thinking": "Thinking",
+      "tool_calling": "Tool Call",
+      "speaking": "Speaking",
+      "spawning": "Spawning",
+      "error": "Error",
+      "offline": "Offline"
+    }
+  },
+  "zones": {
+    "desk": "Desk",
+    "meeting": "Meeting Room",
+    "hotDesk": "Hot Desk",
+    "lounge": "Lounge"
+  },
+  "errors": {
+    "notConnected": "Not connected to Gateway",
+    "operationFailed": "Operation failed",
+    "operationTimeout": "Operation timed out. Gateway may not support this operation.",
+    "adapterNotInitialized": "Gateway Adapter not initialized",
+    "unknownError": "Unknown error",
+    "errorOccurred": "An error occurred"
+  },
+  "events": {
+    "startRunning": "Started running",
+    "thinking": "Thinking",
+    "runEnded": "Run ended",
+    "fallback": "Fallback",
+    "toolCall": "Tool call: {{name}}",
+    "toolDone": "Tool done: {{name}}",
+    "errorPrefix": "Error: {{message}}",
+    "unknownStream": "Unknown stream: {{stream}}",
+    "lifecycleUnknown": "Lifecycle: {{phase}}"
+  }
+}

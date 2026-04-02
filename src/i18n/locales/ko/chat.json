@@ -1,0 +1,80 @@
+{
+  "placeholder": "메시지를 입력하세요... (Enter 전송, Shift+Enter 줄바꿈)",
+  "send": "전송",
+  "thinking": "생각 중...",
+  "emptyTitle": "대화를 시작하세요",
+  "emptyDescription": "에이전트에게 메시지를 보내 대화를 시작하세요.",
+  "loadingHistory": "이전 대화를 불러오는 중...",
+  "scrollToBottom": "아래로 스크롤",
+  "dock": {
+    "collapseDock": "채팅 닫기",
+    "expandDock": "채팅 열기",
+    "placeholder": "메시지를 입력하세요... (Enter 전송, Shift+Enter 줄바꿈)",
+    "startNewChat": "새 대화를 시작하세요",
+    "thinkingStatus": "생각 중..."
+  },
+  "agentSelector": {
+    "defaultLabel": "에이전트"
+  },
+  "chatDialog": {
+    "loadingHistory": "이전 대화를 불러오는 중...",
+    "scrollToBottom": "아래로 스크롤"
+  },
+  "page": {
+    "description": "에이전트와 직접 대화하는 채팅 워크스페이스입니다.",
+    "emptyTitle": "대화를 시작하세요",
+    "emptyDescription": "세션을 선택하거나 메시지를 입력해 에이전트와 대화를 시작하세요.",
+    "export": "내보내기",
+    "addAttachment": "첨부 파일 추가",
+    "removeAttachment": "첨부 파일 제거",
+    "clearAttachments": "첨부 파일 지우기"
+  },
+  "message": {
+    "assistant": "어시스턴트",
+    "hideDetails": "숨기기",
+    "pin": "고정",
+    "pinned": "고정됨",
+    "result": "결과",
+    "toolArgs": "인자",
+    "toolCall": "도구 호출",
+    "you": "나",
+    "viewDetails": "상세 보기"
+  },
+  "toolStatus": {
+    "error": "오류",
+    "pending": "대기 중",
+    "running": "실행 중",
+    "done": "완료"
+  },
+  "toolActivity": {
+    "calling": "도구 `{{name}}` 호출 중",
+    "finished": "도구 `{{name}}` 완료"
+  },
+  "sessionSwitcher": {
+    "noSessions": "다른 세션 없음",
+    "newSession": "새 세션",
+    "newSessionWith": "{{agent}}와 새 세션",
+    "newSessionTooltip": "새 대화",
+    "relativeNow": "방금",
+    "relativeMinutes": "{{count}}분 전",
+    "relativeHours": "{{count}}시간 전",
+    "relativeDays": "{{count}}일 전",
+    "messageCount": "{{count}}개 메시지"
+  },
+  "slash": {
+    "helpTitle": "사용 가능한 명령어",
+    "commands": {
+      "new": "새 세션 시작",
+      "reset": "현재 세션 리셋",
+      "stop": "현재 실행 중단",
+      "clear": "로컬 대화 내역 지우기",
+      "export": "대화 내역 Markdown으로 내보내기",
+      "help": "명령어 목록 보기"
+    },
+    "feedback": {
+      "newSession": "새 세션이 생성되었습니다.",
+      "reset": "세션이 리셋되었습니다.",
+      "stop": "실행이 중단되었습니다."
+    }
+  }
+}

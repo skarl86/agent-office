@@ -1,0 +1,13 @@
+{
+  "title": "에이전트 오피스",
+  "zones": {
+    "desk": "고정 자리",
+    "meeting": "회의실",
+    "hotDesk": "임시 자리",
+    "lounge": "휴게실"
+  },
+  "floorplan": {
+    "noAgents": "연결된 에이전트 없음",
+    "connecting": "Gateway 연결 중..."
+  }
+}

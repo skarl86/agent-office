@@ -1,0 +1,22 @@
+{
+  "metrics": {
+    "activeAgents": "Active Agents",
+    "totalTokens": "Total Tokens",
+    "collaboration": "Collaboration",
+    "tokenRate": "Token Rate",
+    "tokenRateUnit": "/min",
+    "costLabel": "Cumulative Cost"
+  },
+  "agentDetail": {
+    "title": "Agent Detail",
+    "deselect": "Deselect",
+    "toolCallHistory": "Tool Call History",
+    "zone": "Zone",
+    "toolCalls": "Tool Calls",
+    "parent": "Parent Agent",
+    "eventHistory": "Event History"
+  },
+  "eventTimeline": {
+    "newEvents": "New Events ↓"
+  }
+}

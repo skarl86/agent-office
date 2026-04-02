@@ -1,0 +1,84 @@
+{
+  "placeholder": "Type a message... (Enter to send, Shift+Enter for newline)",
+  "send": "Send",
+  "thinking": "Thinking...",
+  "emptyTitle": "Start a conversation",
+  "emptyDescription": "Send a message to start chatting with an agent.",
+  "loadingHistory": "Loading chat history...",
+  "scrollToBottom": "Scroll to bottom",
+  "dock": {
+    "collapseDock": "Collapse chat",
+    "expandDock": "Expand chat",
+    "placeholder": "Type a message... (Enter to send, Shift+Enter for new line)",
+    "startNewChat": "Start a new conversation",
+    "thinkingStatus": "Thinking..."
+  },
+  "agentSelector": {
+    "defaultLabel": "Agent"
+  },
+  "chatDialog": {
+    "loadingHistory": "Loading history...",
+    "scrollToBottom": "Scroll to bottom"
+  },
+  "page": {
+    "description": "A dedicated operator chat workspace with session context and live transcript updates.",
+    "emptyTitle": "Start a conversation",
+    "emptyDescription": "Pick a session or type a message to begin chatting with the selected agent.",
+    "export": "Export",
+    "addAttachment": "Add attachment",
+    "removeAttachment": "Remove attachment",
+    "clearAttachments": "Clear attachments"
+  },
+  "message": {
+    "assistant": "Assistant",
+    "hideDetails": "Hide",
+    "pin": "Pin",
+    "pinned": "Pinned",
+    "result": "Result",
+    "toolArgs": "Args",
+    "toolCall": "Tool call",
+    "you": "You",
+    "viewDetails": "Details"
+  },
+  "toolStatus": {
+    "error": "Error",
+    "pending": "Pending",
+    "running": "Running",
+    "done": "Done"
+  },
+  "toolActivity": {
+    "calling": "Calling tool `{{name}}`",
+    "finished": "Tool `{{name}}` finished"
+  },
+  "sessionSwitcher": {
+    "noSessions": "No other sessions",
+    "newSession": "New session",
+    "newSessionWith": "New session with {{agent}}",
+    "newSessionTooltip": "New chat",
+    "relativeNow": "just now",
+    "relativeMinutes_one": "{{count}}m",
+    "relativeMinutes_other": "{{count}}m",
+    "relativeHours_one": "{{count}}h",
+    "relativeHours_other": "{{count}}h",
+    "relativeDays_one": "{{count}}d",
+    "relativeDays_other": "{{count}}d",
+    "messageCount_one": "{{count}} msg",
+    "messageCount_other": "{{count}} msgs"
+  },
+  "slash": {
+    "helpTitle": "Available Commands",
+    "commands": {
+      "new": "Start a new session",
+      "reset": "Reset the current session",
+      "stop": "Stop the active run",
+      "clear": "Clear the local transcript view",
+      "export": "Export the transcript to Markdown",
+      "help": "Show available slash commands"
+    },
+    "feedback": {
+      "newSession": "New session created.",
+      "reset": "Session has been reset.",
+      "stop": "Run stopped."
+    }
+  }
+}

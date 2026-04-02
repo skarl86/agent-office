@@ -1,0 +1,56 @@
+{
+  "topbar": {
+    "activeCountText": "활성",
+    "tokensLabel": "토큰",
+    "console": "콘솔",
+    "office": "오피스",
+    "chat": "채팅",
+    "navigation": "메인 네비게이션",
+    "pageTitles": {
+      "chat": "채팅",
+      "dashboard": "대시보드",
+      "channels": "채널",
+      "skills": "스킬",
+      "cron": "크론 작업",
+      "agents": "에이전트 관리",
+      "settings": "설정",
+      "fallback": "콘솔"
+    },
+    "theme": {
+      "switchToDark": "다크 모드로 전환",
+      "switchToLight": "라이트 모드로 전환"
+    },
+    "language": {
+      "switchToEn": "영어로 전환",
+      "switchToKo": "한국어로 전환"
+    }
+  },
+  "sidebar": {
+    "agents": "에이전트",
+    "expand": "사이드바 펼치기",
+    "collapse": "사이드바 접기",
+    "closeSidebar": "사이드바 닫기",
+    "expandSidebar": "사이드바 펼치기",
+    "collapseSidebar": "사이드바 접기",
+    "metricsTitle": "개요 / 트렌드",
+    "agentList": "에이전트 목록",
+    "subAgents": "서브에이전트",
+    "agentDetail": "에이전트 상세",
+    "eventTimeline": "이벤트 타임라인",
+    "searchPlaceholder": "에이전트 검색...",
+    "filters": {
+      "all": "전체",
+      "active": "활성",
+      "idle": "대기",
+      "error": "오류"
+    }
+  },
+  "consoleNav": {
+    "dashboard": "대시보드",
+    "agents": "에이전트",
+    "channels": "채널",
+    "skills": "스킬",
+    "cron": "크론 작업",
+    "settings": "설정"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "title": "Agent Office",
+  "zones": {
+    "desk": "Desk",
+    "meeting": "Meeting Room",
+    "hotDesk": "Hot Desk",
+    "lounge": "Lounge"
+  },
+  "floorplan": {
+    "noAgents": "No agents connected",
+    "connecting": "Connecting to Gateway..."
+  }
+}

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Building -->
+  <rect x="4" y="10" width="24" height="18" rx="2" fill="#3b82f6"/>
+  <!-- Roof -->
+  <path d="M2 12 L16 4 L30 12" stroke="#1d4ed8" stroke-width="2" fill="#2563eb" stroke-linejoin="round"/>
+  <!-- Windows -->
+  <rect x="8" y="14" width="4" height="4" rx="0.5" fill="white" opacity="0.9"/>
+  <rect x="14" y="14" width="4" height="4" rx="0.5" fill="white" opacity="0.9"/>
+  <rect x="20" y="14" width="4" height="4" rx="0.5" fill="white" opacity="0.5"/>
+  <!-- Door -->
+  <rect x="13" y="22" width="6" height="6" rx="0.5" fill="white" opacity="0.8"/>
+  <!-- Antenna dot (agent indicator) -->
+  <circle cx="26" cy="7" r="3" fill="#22c55e"/>
+</svg>
