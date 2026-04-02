@@ -40,7 +40,8 @@ export const useChannelsStore = create<ChannelsStoreState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await waitForAdapter();
-      const channels = await getAdapter().channelsStatus();
+      const raw = await getAdapter().channelsStatus();
+      const channels = Array.isArray(raw) ? raw : [];
       set({ channels, isLoading: false });
     } catch (err) {
       set({ error: String(err), isLoading: false });

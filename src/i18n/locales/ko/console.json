@@ -3,7 +3,18 @@
     "title": "대시보드",
     "description": "시스템 개요: Gateway 상태, 채널 연결, 스킬 활성화 현황",
     "loading": "대시보드 데이터 로딩 중...",
-    "placeholder": "대시보드 콘텐츠 준비 중..."
+    "placeholder": "대시보드 콘텐츠 준비 중...",
+    "refresh": "새로고침",
+    "retry": "재시도",
+    "stats": {
+      "activeAgents": "활성 에이전트",
+      "connectedChannels": "연결된 채널",
+      "activeSkills": "활성 스킬",
+      "cronJobs": "크론 작업"
+    },
+    "quickNav": {
+      "title": "빠른 이동"
+    }
   },
   "channels": {
     "title": "채널",

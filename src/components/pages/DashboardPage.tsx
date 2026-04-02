@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Bot, Radio, Wrench, Clock, RefreshCw } from "lucide-react";
 import { useDashboardStore } from "@/store/console-stores/dashboard-store";
+import { useOfficeStore } from "@/store/office-store";
 import { StatCard } from "@/components/console/dashboard/StatCard";
 import { ChannelOverview } from "@/components/console/dashboard/ChannelOverview";
 import { SkillOverview } from "@/components/console/dashboard/SkillOverview";
@@ -12,10 +13,13 @@ import { LoadingState } from "@/components/console/shared/LoadingState";
 export function DashboardPage() {
   const { t } = useTranslation("console");
   const { channelsSummary, skillsSummary, usage, isLoading, error, refresh } = useDashboardStore();
+  const connectionStatus = useOfficeStore((s) => s.connectionStatus);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    if (connectionStatus === "connected") {
+      refresh();
+    }
+  }, [refresh, connectionStatus]);
 
   const connectedChannels = channelsSummary.filter((c) => c.status === "connected").length;
   const activeSkills = skillsSummary.filter((s) => s.enabled).length;

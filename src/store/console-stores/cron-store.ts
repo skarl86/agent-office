@@ -35,7 +35,8 @@ export const useCronStore = create<CronStoreState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await waitForAdapter();
-      const tasks = await getAdapter().cronList();
+      const raw = await getAdapter().cronList();
+      const tasks = Array.isArray(raw) ? raw : [];
       set({ tasks, isLoading: false });
     } catch (err) {
       set({ error: String(err), isLoading: false });

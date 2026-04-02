@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Radio, RefreshCw } from "lucide-react";
 import { useChannelsStore } from "@/store/console-stores/channels-store";
+import { useOfficeStore } from "@/store/office-store";
 import { ChannelCard } from "@/components/console/channels/ChannelCard";
 import { ChannelStatsBar } from "@/components/console/channels/ChannelStatsBar";
 import { AvailableChannelGrid } from "@/components/console/channels/AvailableChannelGrid";
@@ -16,10 +17,13 @@ export function ChannelsPage() {
   const fetchChannels = useChannelsStore((s) => s.fetchChannels);
   const logoutChannel = useChannelsStore((s) => s.logoutChannel);
   const openConfigDialog = useChannelsStore((s) => s.openConfigDialog);
+  const connectionStatus = useOfficeStore((s) => s.connectionStatus);
 
   useEffect(() => {
-    void fetchChannels();
-  }, [fetchChannels]);
+    if (connectionStatus === "connected") {
+      void fetchChannels();
+    }
+  }, [fetchChannels, connectionStatus]);
 
   const handleLogout = (channel: ChannelInfo) => {
     void logoutChannel(channel.id, channel.accountId);

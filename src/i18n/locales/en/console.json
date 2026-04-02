@@ -3,7 +3,18 @@
     "title": "Dashboard",
     "description": "System overview: Gateway status, channel connections, skill activation",
     "loading": "Loading dashboard data...",
-    "placeholder": "Dashboard content coming soon..."
+    "placeholder": "Dashboard content coming soon...",
+    "refresh": "Refresh",
+    "retry": "Retry",
+    "stats": {
+      "activeAgents": "Active Agents",
+      "connectedChannels": "Connected Channels",
+      "activeSkills": "Active Skills",
+      "cronJobs": "Cron Jobs"
+    },
+    "quickNav": {
+      "title": "Quick Navigation"
+    }
   },
   "channels": {
     "title": "Channels",

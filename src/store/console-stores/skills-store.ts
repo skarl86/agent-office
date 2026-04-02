@@ -69,7 +69,8 @@ export const useSkillsStore = create<SkillsStoreState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await waitForAdapter();
-      const skills = await getAdapter().skillsStatus();
+      const raw = await getAdapter().skillsStatus();
+      const skills = Array.isArray(raw) ? raw : [];
       set({ skills, isLoading: false });
     } catch (err) {
       set({ error: String(err), isLoading: false });
