@@ -7,6 +7,7 @@ import type {
   ChannelInfo,
   CronTask,
   CronTaskInput,
+  GatewayBinding,
   SkillInfo,
   ToolCatalogEntry,
 } from "@/gateway/adapter-types";
@@ -106,7 +107,7 @@ interface AgentsStoreState {
   saveAgentSkillsAllowlist: (agentId: string, skills: string[] | null) => Promise<PatchResult>;
 
   // Channels tab actions
-  fetchAgentChannels: () => Promise<void>;
+  fetchAgentChannels: (agentId: string) => Promise<void>;
 
   // Cron tab actions
   fetchAgentCronJobs: (agentId: string) => Promise<void>;
@@ -469,12 +470,31 @@ export const useAgentsStore = create<AgentsStoreState>((set, get) => ({
 
   // --- Channels tab ---
 
-  fetchAgentChannels: async () => {
+  fetchAgentChannels: async (agentId: string) => {
     set({ agentChannelsLoading: true });
     try {
       await waitForAdapter();
-      const channels = await getAdapter().channelsStatus();
-      set({ agentChannels: channels, agentChannelsLoading: false });
+      const adapter = getAdapter();
+      const [channels, snap] = await Promise.all([
+        adapter.channelsStatus(),
+        adapter.configGet(),
+      ]);
+
+      const bindings = (snap.config?.bindings as GatewayBinding[] | undefined) ?? [];
+      const agentBindings = bindings.filter((b) => b.agentId === agentId);
+
+      const filtered =
+        agentBindings.length === 0
+          ? []
+          : channels.filter((channel) =>
+              agentBindings.some(
+                (b) =>
+                  b.match.channel === channel.type &&
+                  (b.match.accountId === undefined || b.match.accountId === channel.accountId),
+              ),
+            );
+
+      set({ agentChannels: filtered, agentChannelsLoading: false });
     } catch {
       set({ agentChannelsLoading: false });
     }

@@ -146,9 +146,11 @@ export class WsAdapter implements GatewayAdapter {
   }
 
   async channelsStatus(): Promise<ChannelInfo[]> {
-    const result = await this.rpcClient.request<GatewayChannelsStatusResult>("channels.status", {
-      probe: true,
-    });
+    const result = await this.rpcClient.request<GatewayChannelsStatusResult>(
+      "channels.status",
+      { probe: true },
+      30_000,
+    );
     return flattenChannelAccounts(result);
   }
 

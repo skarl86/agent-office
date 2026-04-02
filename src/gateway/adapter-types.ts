@@ -328,6 +328,16 @@ export interface ConfigSnapshot {
   issues?: Array<{ path: string; message: string }>;
 }
 
+export interface GatewayBindingMatch {
+  channel: string;
+  accountId?: string;
+}
+
+export interface GatewayBinding {
+  agentId: string;
+  match: GatewayBindingMatch;
+}
+
 export interface ConfigPatchResult {
   ok: boolean;
   config: Record<string, unknown>;

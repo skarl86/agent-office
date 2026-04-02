@@ -35,7 +35,7 @@ export function ChannelsTab({ agent }: ChannelsTabProps) {
   const { agentChannels, agentChannelsLoading, fetchAgentChannels } = useAgentsStore();
 
   useEffect(() => {
-    fetchAgentChannels();
+    fetchAgentChannels(agent.id);
   }, [agent.id, fetchAgentChannels]);
 
   const channels = Array.isArray(agentChannels) ? agentChannels : [];
@@ -55,7 +55,7 @@ export function ChannelsTab({ agent }: ChannelsTabProps) {
           {t("agents.channels.title")}
         </h3>
         <button
-          onClick={() => fetchAgentChannels()}
+          onClick={() => fetchAgentChannels(agent.id)}
           className="rounded p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700"
         >
           <RefreshCw className="h-4 w-4" />
