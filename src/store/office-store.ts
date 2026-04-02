@@ -6,6 +6,7 @@ import type {
   AgentEventPayload,
   AgentSummary,
   AgentToAgentConfig,
+  AgentZone,
   CollaborationLink,
   ConnectionStatus,
   EventHistoryItem,
@@ -17,17 +18,33 @@ import type {
   TokenSnapshot,
   VisualAgent,
 } from "@/gateway/types";
-import { allocatePosition, allocateMeetingPositions } from "@/lib/position-allocator";
-import { extractAgentIdFromSessionKey, isSubAgentSessionKey } from "@/lib/session-key-utils";
+import { allocatePosition } from "@/lib/position-allocator";
+import { extractAgentIdFromSessionKey, extractSessionNamespace, isSubAgentSessionKey } from "@/lib/session-key-utils";
 import { DEFAULT_MAX_SUB_AGENTS, A2A_TOOL_NAMES, ZONES } from "@/lib/constants";
+import { calculatePath, calculateDuration, interpolatePath } from "@/lib/pathfinding";
+import { applyMeetingGathering, detectMeetingGroups } from "./meeting-manager";
 
 enableMapSet();
 
 const THEME_STORAGE_KEY = "openclaw-theme";
 const EVENT_HISTORY_LIMIT = 200;
+const LINK_TIMEOUT_MS = 60_000;
 
 /** 서브에이전트 퇴장 타이머 (store 외부) */
 const subAgentRetireTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+/** 미팅 복귀 타이머 (store 외부) */
+const meetingRetireTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const MIN_MEETING_STAY_MS = 10_000;
+
+let meetingGatheringTimer: ReturnType<typeof setTimeout> | null = null;
+let lastMeetingGroupsHash = "";
+const MEETING_GATHERING_THROTTLE_MS = 500;
+
+const LOUNGE_CENTER = {
+  x: ZONES.lounge.x + ZONES.lounge.width / 2,
+  y: ZONES.lounge.y + ZONES.lounge.height / 2,
+};
 
 function getInitialTheme(): ThemeMode {
   if (typeof window === "undefined") return "dark";
@@ -68,6 +85,7 @@ function createVisualAgent(
     childAgentIds: [],
     zone: isSubAgent ? "hotDesk" : "desk",
     originalPosition: null,
+    originalZone: null,
     movement: null,
     confirmed: true,
     arrivedAtHotDeskAt: isSubAgent ? Date.now() : null,
@@ -105,19 +123,239 @@ function extractTargetAgentId(
     if (extracted && agents.has(extracted)) return extracted;
   }
 
+  // sessionKey에서 에이전트 추출 (sessions_send에서 sessionKey로 대상 지정)
+  if (typeof args.sessionKey === "string") {
+    const extracted = extractAgentIdFromSessionKey(args.sessionKey);
+    if (extracted) {
+      // id로 직접 매칭
+      if (agents.has(extracted)) return extracted;
+      // name으로 매칭
+      for (const [id, a] of agents) {
+        if (!a.isSubAgent && (a.id === extracted || a.name === extracted)) {
+          return id;
+        }
+      }
+    }
+  }
+
   return null;
 }
 
-/** 미팅 존 기준 시트 위치 계산 */
-const MEETING_CENTER = {
-  x: ZONES.meeting.x + ZONES.meeting.width / 2,
-  y: ZONES.meeting.y + ZONES.meeting.height / 2,
-};
+/**
+ * Create a direct peer collaboration link between two main agents.
+ * Used when an A2A tool event (sessions_send, sessions_spawn, etc.) is detected.
+ * These links bypass sessionKey matching since peer agents use different session keys.
+ */
+function createPeerCollaborationLink(
+  state: { links: CollaborationLink[]; agents: Map<string, VisualAgent> },
+  sourceId: string,
+  targetId: string,
+): void {
+  if (sourceId === targetId) return;
+  const source = state.agents.get(sourceId);
+  const target = state.agents.get(targetId);
+  if (!source || !target) return;
+  // Only link main agents (not sub-agents) for meeting zone
+  if (source.isSubAgent || target.isSubAgent) return;
 
-const LOUNGE_CENTER = {
-  x: ZONES.lounge.x + ZONES.lounge.width / 2,
-  y: ZONES.lounge.y + ZONES.lounge.height / 2,
-};
+  const peerSessionKey = `peer:${[sourceId, targetId].sort().join(":")}`;
+  const now = Date.now();
+
+  const existingIdx = state.links.findIndex(
+    (l) =>
+      (l.sourceId === sourceId && l.targetId === targetId) ||
+      (l.sourceId === targetId && l.targetId === sourceId),
+  );
+
+  if (existingIdx >= 0) {
+    const link = state.links[existingIdx];
+    if (link) {
+      link.lastActivityAt = now;
+      link.strength = Math.min(link.strength + 0.15, 1);
+      link.isPeer = true;
+    }
+  } else {
+    state.links.push({
+      sourceId,
+      targetId,
+      sessionKey: peerSessionKey,
+      strength: 0.5, // Start above threshold immediately
+      lastActivityAt: now,
+      isPeer: true,
+    });
+  }
+}
+
+/**
+ * sessionKey 기반 collaboration link 업데이트.
+ * 같은 sessionKey에 2+ 에이전트가 매핑되면 링크 생성.
+ * namespace 기반 매칭도 수행 — 다른 sessionKey라도 같은 agent namespace면 링크 생성.
+ */
+function updateCollaborationLinks(
+  state: { links: CollaborationLink[]; sessionKeyMap: Map<string, string[]> },
+  sessionKey: string,
+  agentId: string,
+): void {
+  const agents = state.sessionKeyMap.get(sessionKey);
+  if (!agents || agents.length < 2) {
+    // namespace 기반 매칭 시도
+    const ns = extractSessionNamespace(sessionKey);
+    if (ns) {
+      const nsAgents = new Set<string>();
+      for (const [sk, ids] of state.sessionKeyMap) {
+        if (extractSessionNamespace(sk) === ns && !sk.includes(":subagent:")) {
+          for (const id of ids) nsAgents.add(id);
+        }
+      }
+      if (nsAgents.size >= 2) {
+        const nsAgentList = Array.from(nsAgents);
+        const now = Date.now();
+        for (let i = 0; i < nsAgentList.length; i++) {
+          for (let j = i + 1; j < nsAgentList.length; j++) {
+            const a = nsAgentList[i]!;
+            const b = nsAgentList[j]!;
+            const existingIdx = state.links.findIndex(
+              (l) =>
+                l.sessionKey === sessionKey &&
+                ((l.sourceId === a && l.targetId === b) || (l.sourceId === b && l.targetId === a)),
+            );
+            if (existingIdx >= 0) {
+              const link = state.links[existingIdx];
+              if (link) {
+                link.lastActivityAt = now;
+                link.strength = Math.min(link.strength + 0.1, 1);
+              }
+            } else {
+              state.links.push({
+                sourceId: a,
+                targetId: b,
+                sessionKey,
+                strength: 0.3,
+                lastActivityAt: now,
+              });
+            }
+          }
+        }
+        state.links = state.links.filter((l) => now - l.lastActivityAt < LINK_TIMEOUT_MS);
+      }
+    }
+    return;
+  }
+
+  const now = Date.now();
+  for (const otherId of agents) {
+    if (otherId === agentId) continue;
+
+    const existingIdx = state.links.findIndex(
+      (l) =>
+        l.sessionKey === sessionKey &&
+        ((l.sourceId === agentId && l.targetId === otherId) ||
+          (l.sourceId === otherId && l.targetId === agentId)),
+    );
+
+    if (existingIdx >= 0) {
+      const link = state.links[existingIdx];
+      if (link) {
+        link.lastActivityAt = now;
+        link.strength = Math.min(link.strength + 0.1, 1);
+      }
+    } else {
+      state.links.push({
+        sourceId: agentId,
+        targetId: otherId,
+        sessionKey,
+        strength: 0.3,
+        lastActivityAt: now,
+      });
+    }
+  }
+
+  // stale 링크 제거
+  state.links = state.links.filter((l) => now - l.lastActivityAt < LINK_TIMEOUT_MS);
+}
+
+/**
+ * Schedule meeting gathering with 500ms throttle.
+ * detectMeetingGroups → applyMeetingGathering chain.
+ * lastMeetingGroupsHash prevents duplicate processing.
+ */
+function scheduleMeetingGathering(): void {
+  if (meetingGatheringTimer) return;
+  meetingGatheringTimer = setTimeout(() => {
+    meetingGatheringTimer = null;
+    const state = useOfficeStore.getState();
+
+    const allowList = state.agentToAgentConfig.enabled
+      ? state.agentToAgentConfig.allow
+      : undefined;
+    const groups = detectMeetingGroups(state.links, state.agents, allowList);
+    const hash = JSON.stringify(groups.map((g) => g.agentIds.sort()));
+    if (hash === lastMeetingGroupsHash) return;
+    lastMeetingGroupsHash = hash;
+
+    applyMeetingGathering(
+      state.agents,
+      groups,
+      (id, pos) => useOfficeStore.getState().moveToMeeting(id, pos),
+      (id) => useOfficeStore.getState().returnFromMeeting(id),
+      (id) => scheduleMeetingReturn(id),
+    );
+  }, MEETING_GATHERING_THROTTLE_MS);
+}
+
+/**
+ * Schedule a meeting return for a main agent, enforcing the minimum 10s stay.
+ *
+ * Possible states:
+ * - Still walking TO meeting → record intent, re-invoke once arrived
+ * - At meeting, arrived recently → schedule timer for remaining wait
+ * - At meeting, stayed long enough → return immediately
+ */
+function scheduleMeetingReturn(agentId: string): void {
+  // Cancel any existing timer
+  const existingTimer = meetingRetireTimers.get(agentId);
+  if (existingTimer) {
+    clearTimeout(existingTimer);
+    meetingRetireTimers.delete(agentId);
+  }
+
+  const agent = useOfficeStore.getState().agents.get(agentId);
+  if (!agent) return;
+  // Don't return agents that are already leaving or gone
+  if (agent.zone !== "meeting" && agent.movement?.toZone !== "meeting") return;
+  // Skip manual meeting agents
+  if (agent.manualMeeting) return;
+
+  // Still walking to meeting — schedule a follow-up check after expected arrival + min stay
+  if (agent.movement?.toZone === "meeting") {
+    const remaining = agent.movement.duration * (1 - agent.movement.progress) + MIN_MEETING_STAY_MS;
+    const timer = setTimeout(() => {
+      meetingRetireTimers.delete(agentId);
+      scheduleMeetingReturn(agentId);
+    }, remaining);
+    meetingRetireTimers.set(agentId, timer);
+    return;
+  }
+
+  // At meeting — check minimum stay
+  if (agent.zone === "meeting") {
+    const arrived = agent.arrivedAtMeetingAt ?? Date.now();
+    const elapsed = Date.now() - arrived;
+    const remaining = MIN_MEETING_STAY_MS - elapsed;
+
+    if (remaining > 0) {
+      const timer = setTimeout(() => {
+        meetingRetireTimers.delete(agentId);
+        scheduleMeetingReturn(agentId);
+      }, remaining);
+      meetingRetireTimers.set(agentId, timer);
+      return;
+    }
+
+    // Min stay satisfied → return to original zone
+    useOfficeStore.getState().returnFromMeeting(agentId);
+  }
+}
 
 export const useOfficeStore = create<OfficeStore>()(
   immer((set, get) => ({
@@ -143,7 +381,96 @@ export const useOfficeStore = create<OfficeStore>()(
     agentToAgentConfig: { enabled: false, allow: [] } as AgentToAgentConfig,
     chatDockHeight: 300,
 
-    // Agent CRUD
+    // ── Movement ──
+
+    startMovement: (agentId: string, toZone: AgentZone, targetPos?: { x: number; y: number }) => {
+      set((state) => {
+        const agent = state.agents.get(agentId);
+        if (!agent) return;
+        // Don't start if already walking to the same zone
+        if (agent.movement && agent.movement.toZone === toZone) return;
+
+        const fromZone = agent.zone;
+        const to = targetPos ?? agent.position; // fallback to current pos if no target
+        const path = calculatePath(agent.position, fromZone, to, toZone);
+        const duration = calculateDuration(path);
+
+        agent.movement = {
+          path,
+          progress: 0,
+          duration,
+          startTime: Date.now(),
+          fromZone,
+          toZone,
+        };
+      });
+    },
+
+    moveToMeeting: (agentId: string, meetingPosition: { x: number; y: number }) => {
+      set((state) => {
+        const agent = state.agents.get(agentId);
+        if (agent) {
+          if (!agent.originalPosition) {
+            agent.originalPosition = { ...agent.position };
+            agent.originalZone = agent.zone;
+          }
+        }
+      });
+      // Trigger walk animation to meeting position
+      useOfficeStore.getState().startMovement(agentId, "meeting", meetingPosition);
+    },
+
+    returnFromMeeting: (agentId: string) => {
+      // Cancel any pending meeting return timer
+      const pendingTimer = meetingRetireTimers.get(agentId);
+      if (pendingTimer) {
+        clearTimeout(pendingTimer);
+        meetingRetireTimers.delete(agentId);
+      }
+      const agent = useOfficeStore.getState().agents.get(agentId);
+      if (!agent?.originalPosition || !agent?.originalZone) return;
+      const returnZone = agent.originalZone;
+      const returnPos = { ...agent.originalPosition };
+      set((state) => {
+        const a = state.agents.get(agentId);
+        if (a) {
+          a.originalPosition = null;
+          a.originalZone = null;
+          a.arrivedAtMeetingAt = null;
+          a.manualMeeting = false;
+        }
+      });
+      useOfficeStore.getState().startMovement(agentId, returnZone, returnPos);
+    },
+
+    tickMovement: () => {
+      set((state) => {
+        const now = Date.now();
+        for (const agent of state.agents.values()) {
+          if (!agent.movement) continue;
+
+          const elapsed = now - agent.movement.startTime;
+          const progress = Math.min(1, elapsed / agent.movement.duration);
+          agent.movement.progress = progress;
+
+          const pos = interpolatePath(agent.movement.path, progress);
+          agent.position = pos;
+
+          if (progress >= 1) {
+            // 도착
+            agent.zone = agent.movement.toZone;
+            agent.position = agent.movement.path[agent.movement.path.length - 1]!;
+            if (agent.movement.toZone === "meeting") {
+              agent.arrivedAtMeetingAt = now;
+            }
+            agent.movement = null;
+          }
+        }
+      });
+    },
+
+    // ── Agent CRUD ──
+
     addAgent: (agent) => {
       set((state) => {
         state.agents.set(agent.id, agent);
@@ -295,6 +622,10 @@ export const useOfficeStore = create<OfficeStore>()(
     },
 
     processAgentEvent: (event: AgentEventPayload) => {
+      // DEBUG: 이벤트 로깅
+      if (import.meta.env.DEV) {
+        console.log("[AgentEvent]", event.stream, event.data.phase ?? "", event.data.name ?? "", "session:", event.sessionKey, "runId:", event.runId);
+      }
       // 퇴장 처리할 서브에이전트 ID (set() 외부에서 타이머 설정)
       let retiredSubAgentId: string | null = null;
 
@@ -422,7 +753,7 @@ export const useOfficeStore = create<OfficeStore>()(
           }
         }
 
-        // ── A2A 도구 호출 감지 → MEETING ROOM 이동 ──
+        // ── A2A 도구 호출 감지 → createPeerCollaborationLink + scheduleMeetingGathering ──
         if (
           event.stream === "tool" &&
           event.data.phase === "start" &&
@@ -430,55 +761,13 @@ export const useOfficeStore = create<OfficeStore>()(
         ) {
           const toolName = event.data.name as string | undefined;
           if (toolName && A2A_TOOL_NAMES.has(toolName)) {
-            const args = event.data.args as Record<string, unknown> | undefined;
+            const args = (event.data.args ?? event.data.input) as Record<string, unknown> | undefined;
             const targetId = extractTargetAgentId(args, state.agents);
 
             if (targetId) {
               const targetAgent = state.agents.get(targetId);
               if (targetAgent && !targetAgent.isSubAgent) {
-                // 링크 추가 or 업데이트 (중복 방지)
-                const existingLinkIdx = state.links.findIndex(
-                  (l) =>
-                    (l.sourceId === agentId && l.targetId === targetId) ||
-                    (l.sourceId === targetId && l.targetId === agentId),
-                );
-
-                if (existingLinkIdx === -1) {
-                  state.links.push({
-                    sourceId: agentId,
-                    targetId,
-                    sessionKey: event.sessionKey ?? `${agentId}-${targetId}`,
-                    strength: 0.8,
-                    lastActivityAt: Date.now(),
-                    isPeer: true,
-                  });
-                } else {
-                  const link = state.links[existingLinkIdx];
-                  if (link) {
-                    link.strength = Math.min(1.0, link.strength + 0.1);
-                    link.lastActivityAt = Date.now();
-                  }
-                }
-
-                // 두 에이전트를 미팅 존으로 이동
-                const seats = allocateMeetingPositions(
-                  [agentId, targetId],
-                  MEETING_CENTER,
-                  80,
-                );
-
-                if (agent.zone !== "meeting") {
-                  agent.zone = "meeting";
-                  if (seats[0]) agent.position = seats[0];
-                  if (!agent.arrivedAtMeetingAt) agent.arrivedAtMeetingAt = Date.now();
-                }
-
-                if (targetAgent.zone !== "meeting") {
-                  targetAgent.zone = "meeting";
-                  if (seats[1]) targetAgent.position = seats[1];
-                  if (!targetAgent.arrivedAtMeetingAt)
-                    targetAgent.arrivedAtMeetingAt = Date.now();
-                }
+                createPeerCollaborationLink(state, agentId, targetId);
               }
             }
           }
@@ -492,6 +781,14 @@ export const useOfficeStore = create<OfficeStore>()(
           }
         }
 
+        // sessionKey 기반 collaboration link 업데이트 (경로 1: Gateway 수정 없이 동작)
+        if (event.sessionKey && agentId) {
+          updateCollaborationLinks(state, event.sessionKey, agentId);
+        }
+
+        // Update runIdMap
+        state.runIdMap.set(event.runId, agentId);
+
         // Add to event history
         if (parsed.summary) {
           const histItem: EventHistoryItem = {
@@ -504,6 +801,9 @@ export const useOfficeStore = create<OfficeStore>()(
           state.eventHistory = [histItem, ...state.eventHistory].slice(0, EVENT_HISTORY_LIMIT);
         }
       });
+
+      // Post-set: schedule meeting gathering after A2A tool detection
+      scheduleMeetingGathering();
 
       // ── 서브에이전트 퇴장 타이머 (store 외부) ──
       if (retiredSubAgentId) {
@@ -523,7 +823,8 @@ export const useOfficeStore = create<OfficeStore>()(
       // no-op in this phase
     },
 
-    // UI Actions
+    // ── UI Actions ──
+
     selectAgent: (id) => {
       set((state) => {
         state.selectedAgentId = id;
@@ -570,7 +871,8 @@ export const useOfficeStore = create<OfficeStore>()(
       });
     },
 
-    // Config
+    // ── Config ──
+
     setMaxSubAgents: (n) => {
       set((state) => {
         state.maxSubAgents = n;
@@ -589,7 +891,8 @@ export const useOfficeStore = create<OfficeStore>()(
       });
     },
 
-    // Metrics
+    // ── Metrics ──
+
     pushTokenSnapshot: (snapshot) => {
       set((state) => {
         state.tokenHistory = [...state.tokenHistory, snapshot].slice(-100);

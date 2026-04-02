@@ -10,6 +10,7 @@ import {
 } from "@/lib/constants";
 import { calculateDeskSlots } from "@/lib/position-allocator";
 import { useOfficeStore } from "@/store/office-store";
+import { useMovementLoop } from "@/hooks/useMovementLoop";
 import { detectMeetingGroups, calculateMeetingSeats } from "@/store/meeting-manager";
 import { AgentAvatar } from "./AgentAvatar";
 import { ConnectionLine } from "./ConnectionLine";
@@ -18,6 +19,7 @@ import { MeetingTable, Sofa, Plant, CoffeeCup, Chair } from "./furniture";
 import { ZoneLabel } from "./ZoneLabel";
 
 export function FloorPlan() {
+  useMovementLoop();
   const agents = useOfficeStore((s) => s.agents);
   const links = useOfficeStore((s) => s.links);
   const theme = useOfficeStore((s) => s.theme);

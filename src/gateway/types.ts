@@ -173,6 +173,7 @@ export interface VisualAgent {
   childAgentIds: string[];
   zone: AgentZone;
   originalPosition: { x: number; y: number } | null;
+  originalZone: AgentZone | null;
   movement: MovementState | null;
   confirmed: boolean;
   arrivedAtHotDeskAt: number | null;
@@ -300,6 +301,12 @@ export interface OfficeStore {
   agentToAgentConfig: AgentToAgentConfig;
   runIdMap: Map<string, string>;
   sessionKeyMap: Map<string, string[]>;
+
+  // Movement
+  tickMovement: () => void;
+  startMovement: (agentId: string, toZone: AgentZone, targetPos?: { x: number; y: number }) => void;
+  moveToMeeting: (agentId: string, meetingPosition: { x: number; y: number }) => void;
+  returnFromMeeting: (agentId: string) => void;
 
   // Agent CRUD
   addAgent: (agent: VisualAgent) => void;

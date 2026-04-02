@@ -187,21 +187,246 @@ function delay(ms = 300): Promise<void> {
 
 let nextCronId = 100;
 
+function randRange(min: number, max: number): number {
+  return min + Math.random() * (max - min);
+}
+
+class SubAgentSimulator {
+  private timers: ReturnType<typeof setTimeout>[] = [];
+  private activeSubAgents = new Set<string>();
+  private subCounter = 0;
+  private running = false;
+
+  constructor(
+    private emit: (event: string, payload: unknown) => void,
+    private maxConcurrent: number = 3,
+  ) {}
+
+  start(): void {
+    if (this.running) return;
+    this.running = true;
+    this.scheduleNextSpawn(5000);
+    this.scheduleAgentToAgentComm(20_000);
+  }
+
+  stop(): void {
+    this.running = false;
+    for (const t of this.timers) clearTimeout(t);
+    this.timers = [];
+    this.activeSubAgents.clear();
+  }
+
+  private schedule(fn: () => void, ms: number): void {
+    const t = setTimeout(fn, ms);
+    this.timers.push(t);
+  }
+
+  private scheduleNextSpawn(delayMs: number): void {
+    this.schedule(() => {
+      if (!this.running) return;
+      if (this.activeSubAgents.size < this.maxConcurrent) {
+        this.spawnSubAgent();
+      }
+      this.scheduleNextSpawn(randRange(3000, 8000));
+    }, delayMs);
+  }
+
+  private spawnSubAgent(): void {
+    this.subCounter++;
+    const subId = `mock-sub-${this.subCounter}`;
+    const runId = `mock-run-sub-${this.subCounter}`;
+    const sessionKey = `mock-session-sub-${this.subCounter}`;
+
+    this.activeSubAgents.add(subId);
+
+    this.emit("agent", {
+      runId,
+      seq: 1,
+      stream: "lifecycle",
+      ts: Date.now(),
+      data: { phase: "start", agentId: subId, parentAgentId: "main" },
+      sessionKey,
+    });
+
+    this.schedule(() => {
+      if (!this.running) return;
+      this.emit("agent", {
+        runId,
+        seq: 2,
+        stream: "assistant",
+        ts: Date.now(),
+        data: { text: `서브에이전트 ${subId} 작업 분석 중...` },
+        sessionKey,
+      });
+    }, randRange(1000, 2000));
+
+    this.schedule(() => {
+      if (!this.running) return;
+      const tools = ["web_search", "code_exec", "file_read", "analyze_data"];
+      const tool = tools[Math.floor(Math.random() * tools.length)];
+      this.emit("agent", {
+        runId,
+        seq: 3,
+        stream: "tool",
+        ts: Date.now(),
+        data: { name: tool, phase: "start" },
+        sessionKey,
+      });
+    }, randRange(3000, 5000));
+
+    this.schedule(() => {
+      if (!this.running) return;
+      this.emit("agent", {
+        runId,
+        seq: 4,
+        stream: "assistant",
+        ts: Date.now(),
+        data: { text: `서브에이전트 ${subId} 작업 완료.` },
+        sessionKey,
+      });
+    }, randRange(6000, 9000));
+
+    const endDelay = randRange(8000, 15_000);
+    this.schedule(() => {
+      if (!this.running) return;
+      this.emit("agent", {
+        runId,
+        seq: 5,
+        stream: "lifecycle",
+        ts: Date.now(),
+        data: { phase: "end", agentId: subId },
+        sessionKey,
+      });
+      this.activeSubAgents.delete(subId);
+    }, endDelay);
+  }
+
+  private scheduleAgentToAgentComm(delayMs: number): void {
+    this.schedule(() => {
+      if (!this.running) return;
+      const agents = ["main", "kent", "loca", "researcher"];
+      const a = agents[Math.floor(Math.random() * agents.length)];
+      let b = a;
+      while (b === a) b = agents[Math.floor(Math.random() * agents.length)];
+
+      const sessionKeyA = `agent:${a}:main`;
+      const sessionKeyB = `agent:${b}:main`;
+      const sharedSessionKey = `a2a-${Date.now()}`;
+      const runIdA = `a2a-run-${a}-${Date.now()}`;
+      const runIdB = `a2a-run-${b}-${Date.now()}`;
+
+      this.emit("agent", {
+        runId: runIdA,
+        seq: 1,
+        stream: "lifecycle",
+        ts: Date.now(),
+        data: { phase: "start", agentId: a },
+        sessionKey: sessionKeyA,
+      });
+
+      this.schedule(() => {
+        if (!this.running) return;
+        this.emit("agent", {
+          runId: runIdA,
+          seq: 2,
+          stream: "tool",
+          ts: Date.now(),
+          data: {
+            phase: "start",
+            name: "sessions_send",
+            input: {
+              sessionKey: sessionKeyB,
+              message: `${a}이(가) 작업을 위임합니다`,
+            },
+          },
+          sessionKey: sessionKeyA,
+        });
+
+        this.emit("agent", {
+          runId: runIdA,
+          seq: 3,
+          stream: "lifecycle",
+          ts: Date.now(),
+          data: { phase: "thinking", agentId: a },
+          sessionKey: sharedSessionKey,
+        });
+      }, 800);
+
+      this.schedule(() => {
+        if (!this.running) return;
+        this.emit("agent", {
+          runId: runIdB,
+          seq: 1,
+          stream: "lifecycle",
+          ts: Date.now(),
+          data: { phase: "start", agentId: b },
+          sessionKey: sessionKeyB,
+        });
+        this.emit("agent", {
+          runId: runIdB,
+          seq: 2,
+          stream: "lifecycle",
+          ts: Date.now(),
+          data: { phase: "thinking", agentId: b },
+          sessionKey: sharedSessionKey,
+        });
+      }, 1500);
+
+      const commDuration = randRange(12_000, 22_000);
+      this.schedule(() => {
+        if (!this.running) return;
+        this.emit("agent", {
+          runId: runIdA,
+          seq: 4,
+          stream: "lifecycle",
+          ts: Date.now(),
+          data: { phase: "end", agentId: a },
+          sessionKey: sessionKeyA,
+        });
+        this.emit("agent", {
+          runId: runIdB,
+          seq: 3,
+          stream: "lifecycle",
+          ts: Date.now(),
+          data: { phase: "end", agentId: b },
+          sessionKey: sessionKeyB,
+        });
+      }, commDuration);
+
+      this.scheduleAgentToAgentComm(randRange(15_000, 30_000));
+    }, delayMs);
+  }
+}
+
 export class MockAdapter implements GatewayAdapter {
   private handlers: Set<AdapterEventHandler> = new Set();
   private cronTasks: CronTask[] = [...MOCK_CRON_TASKS];
+  private subAgentSimulator: SubAgentSimulator | null = null;
 
   async connect(): Promise<void> {
     await delay(200);
+    this.subAgentSimulator = new SubAgentSimulator(
+      (event, payload) => this.emit(event, payload),
+      3,
+    );
+    this.subAgentSimulator.start();
   }
 
   disconnect(): void {
+    this.subAgentSimulator?.stop();
+    this.subAgentSimulator = null;
     this.handlers.clear();
   }
 
   onEvent(handler: AdapterEventHandler): () => void {
     this.handlers.add(handler);
     return () => this.handlers.delete(handler);
+  }
+
+  private emit(event: string, payload: unknown): void {
+    for (const h of this.handlers) {
+      h(event, payload);
+    }
   }
 
   async chatHistory(_sessionKey?: string): Promise<ChatHistoryResult> {
@@ -340,12 +565,10 @@ export class MockAdapter implements GatewayAdapter {
       mainKey: "agent:main:main",
       scope: "local",
       agents: [
-        {
-          id: "main",
-          name: "메인 에이전트",
-          default: true,
-          identity: { name: "켄트", emoji: "🤖" },
-        },
+        { id: "main", name: "main", default: true, identity: { name: "기붕이", emoji: "🤖" } },
+        { id: "kent", name: "kent", identity: { name: "켄트", emoji: "🧪" } },
+        { id: "loca", name: "loca", identity: { name: "로카", emoji: "📍" } },
+        { id: "researcher", name: "researcher", identity: { name: "리서처", emoji: "🔬" } },
       ],
     };
   }
@@ -423,7 +646,7 @@ export class MockAdapter implements GatewayAdapter {
       valid: true,
       config: {
         agents: { defaults: { subagents: { maxConcurrent: 5 } } },
-        tools: { agentToAgent: { enabled: false, allow: [] } },
+        tools: { agentToAgent: { enabled: true, allow: ["main", "kent", "loca", "researcher"] } },
       },
     };
   }

@@ -109,11 +109,28 @@ export function useGatewayConnection({ url, token }: UseGatewayConnectionOptions
         void initAdapter("ws", { wsClient: ws, rpcClient: rpc });
         void fetchGatewayConfig(rpc, setMaxSubAgents, setAgentToAgentConfig);
         void fetchAgentNames(rpc, syncMainAgents);
+
+        // session.tool 이벤트를 받기 위해 sessions.subscribe 호출
+        void rpc.request("sessions.subscribe").catch(() => {});
+
       }
     });
 
     ws.onEvent("agent", (frame: GatewayEventFrame) => {
       const payload = frame.payload as AgentEventPayload;
+      if (import.meta.env.DEV) {
+        console.log("[WS:agent]", payload.stream, payload.data?.phase ?? "", payload.data?.name ?? "", "session:", payload.sessionKey);
+      }
+      throttle.push(payload);
+    });
+
+    // session.tool 이벤트 — sessions.subscribe 후 모든 세션의 tool 이벤트 수신
+    ws.onEvent("session.tool", (frame: GatewayEventFrame) => {
+      const payload = frame.payload as AgentEventPayload;
+      if (import.meta.env.DEV) {
+        console.log("[WS:session.tool]", payload.data?.name ?? "", "session:", payload.sessionKey);
+      }
+      // tool 이벤트를 agent 이벤트와 동일하게 처리 (A2A 도구 감지 포함)
       throttle.push(payload);
     });
 

@@ -25,6 +25,9 @@ const MEETING_TABLE_CENTERS = [
 
 /**
  * Detect collaboration groups that should trigger meeting zone gathering.
+ * Groups agents by sessionKey where 2+ agents are collaborating with strength > threshold.
+ * When allowList is provided, only agents in the list can participate.
+ * Sub-agents are always excluded from meeting groups.
  */
 export function detectMeetingGroups(
   links: CollaborationLink[],
@@ -74,7 +77,7 @@ export function calculateMeetingSeats(
   tableIndex: number,
 ): Map<string, { x: number; y: number }> {
   const center = MEETING_TABLE_CENTERS[tableIndex % MEETING_TABLE_CENTERS.length];
-  const positions = allocateMeetingPositions(group.agentIds, center, 80);
+  const positions = allocateMeetingPositions(group.agentIds, center);
   const result = new Map<string, { x: number; y: number }>();
 
   group.agentIds.forEach((id, i) => {
@@ -86,13 +89,18 @@ export function calculateMeetingSeats(
 }
 
 /**
- * Apply meeting gathering: move agents to meeting positions.
+ * Apply meeting gathering: move agents to meeting positions and save originals.
+ * Called from a store action or effect.
+ *
+ * @param scheduleMeetingReturn - Called instead of returnFromMeeting to enforce minimum 10s stay.
+ *   If not provided, returnFromMeeting is called directly (for immediate forced returns).
  */
 export function applyMeetingGathering(
   agents: Map<string, VisualAgent>,
   groups: MeetingGroup[],
   moveToMeeting: (agentId: string, pos: { x: number; y: number }) => void,
   returnFromMeeting: (agentId: string) => void,
+  scheduleMeetingReturn?: (agentId: string) => void,
 ): void {
   const inMeeting = new Set<string>();
 
@@ -100,17 +108,21 @@ export function applyMeetingGathering(
     const seats = calculateMeetingSeats(group, tableIndex);
     for (const [agentId, pos] of seats) {
       const agent = agents.get(agentId);
-      if (agent && agent.zone !== "meeting") {
+      if (agent && agent.zone !== "meeting" && agent.movement?.toZone !== "meeting") {
         moveToMeeting(agentId, pos);
       }
       inMeeting.add(agentId);
     }
   });
 
-  // Return agents no longer in any meeting
+  // Return agents no longer in any meeting — respect minimum stay
   for (const agent of agents.values()) {
     if (agent.zone === "meeting" && !inMeeting.has(agent.id) && !agent.manualMeeting) {
-      returnFromMeeting(agent.id);
+      if (scheduleMeetingReturn) {
+        scheduleMeetingReturn(agent.id);
+      } else {
+        returnFromMeeting(agent.id);
+      }
     }
   }
 }
