@@ -169,10 +169,6 @@ export function useGatewayConnection({ url, token }: UseGatewayConnectionOptions
   return { wsClient: wsRef, rpcClient: rpcRef };
 }
 
-interface ConfigGetResponse {
-  value?: unknown;
-}
-
 async function fetchAgentNames(
   rpc: GatewayRpcClient,
   syncMainAgents: (agents: AgentSummary[]) => void,
@@ -193,48 +189,50 @@ async function fetchGatewayConfig(
   setAgentToAgentConfig: (config: { enabled: boolean; allow: string[] }) => void,
 ): Promise<void> {
   try {
-    const resp = await rpc.request<ConfigGetResponse>("config.get", {
-      keys: ["agents.defaults.subagents", "agents.defaults.model", "agents.list", "tools.agentToAgent"],
-    });
-    const val = resp.value as Record<string, unknown> | undefined;
-    if (val) {
-      const subagents = val["agents.defaults.subagents"] as { maxConcurrent?: number } | undefined;
-      if (subagents?.maxConcurrent && subagents.maxConcurrent >= 1 && subagents.maxConcurrent <= 50) {
-        setMaxSubAgents(subagents.maxConcurrent);
-      }
-      const a2a = val["tools.agentToAgent"] as { enabled?: boolean; allow?: string[] } | undefined;
-      if (a2a) {
-        setAgentToAgentConfig({
-          enabled: a2a.enabled ?? false,
-          allow: Array.isArray(a2a.allow) ? a2a.allow : [],
-        });
-      }
+    const resp = await rpc.request<Record<string, unknown>>("config.get");
+    // config.get returns full config snapshot: { config: { agents: {...}, tools: {...}, ... } }
+    const cfg = (resp.config ?? resp) as Record<string, unknown>;
+    const agentsCfg = cfg.agents as Record<string, unknown> | undefined;
+    const defaults = agentsCfg?.defaults as Record<string, unknown> | undefined;
+    const toolsCfg = cfg.tools as Record<string, unknown> | undefined;
 
-      // 에이전트별 기본 모델 매핑 (config 기반)
-      const defaultModel = val["agents.defaults.model"] as { primary?: string } | string | undefined;
-      const defaultModelStr = typeof defaultModel === "string"
-        ? defaultModel
-        : typeof defaultModel === "object" && defaultModel?.primary
-          ? defaultModel.primary
-          : null;
+    const subagents = defaults?.subagents as { maxConcurrent?: number } | undefined;
+    if (subagents?.maxConcurrent && subagents.maxConcurrent >= 1 && subagents.maxConcurrent <= 50) {
+      setMaxSubAgents(subagents.maxConcurrent);
+    }
 
-      const agentList = val["agents.list"] as Array<{ id: string; model?: { primary?: string } | string }> | undefined;
-      if (agentList) {
-        const store = useOfficeStore.getState();
-        for (const entry of agentList) {
-          if (!entry.id || !store.agents.has(entry.id)) continue;
-          const agent = store.agents.get(entry.id);
-          if (agent?.model) continue; // 세션 폴링에서 이미 설정된 경우 우선
+    const a2a = toolsCfg?.agentToAgent as { enabled?: boolean; allow?: string[] } | undefined;
+    if (a2a) {
+      setAgentToAgentConfig({
+        enabled: a2a.enabled ?? false,
+        allow: Array.isArray(a2a.allow) ? a2a.allow : [],
+      });
+    }
 
-          const agentModel = typeof entry.model === "string"
-            ? entry.model
-            : typeof entry.model === "object" && entry.model?.primary
-              ? entry.model.primary
-              : defaultModelStr;
+    // 에이전트별 기본 모델 매핑 (config 기반)
+    const defaultModel = defaults?.model as { primary?: string } | string | undefined;
+    const defaultModelStr = typeof defaultModel === "string"
+      ? defaultModel
+      : typeof defaultModel === "object" && defaultModel?.primary
+        ? defaultModel.primary
+        : null;
 
-          if (agentModel) {
-            store.updateAgent(entry.id, { model: agentModel });
-          }
+    const agentList = agentsCfg?.list as Array<{ id: string; model?: { primary?: string } | string }> | undefined;
+    if (agentList) {
+      const store = useOfficeStore.getState();
+      for (const entry of agentList) {
+        if (!entry.id || !store.agents.has(entry.id)) continue;
+        const agent = store.agents.get(entry.id);
+        if (agent?.model) continue; // 세션 폴링에서 이미 설정된 경우 우선
+
+        const agentModel = typeof entry.model === "string"
+          ? entry.model
+          : typeof entry.model === "object" && entry.model?.primary
+            ? entry.model.primary
+            : defaultModelStr;
+
+        if (agentModel) {
+          store.updateAgent(entry.id, { model: agentModel });
         }
       }
     }
