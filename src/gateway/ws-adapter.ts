@@ -187,8 +187,8 @@ export class WsAdapter implements GatewayAdapter {
   }
 
   async cronList(): Promise<CronTask[]> {
-    const result = await this.rpcClient.request<{ tasks?: CronTask[] }>("cron.list");
-    return Array.isArray(result) ? result : (result?.tasks ?? []);
+    const result = await this.rpcClient.request<{ jobs?: CronTask[]; total?: number }>("cron.list");
+    return result.jobs ?? [];
   }
 
   async cronAdd(input: CronTaskInput): Promise<CronTask> {
