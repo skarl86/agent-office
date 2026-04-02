@@ -15,6 +15,7 @@ import { ToastContainer } from "@/components/shared/ToastContainer";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import type { PageId } from "@/gateway/types";
 import { useGatewayConnection } from "@/hooks/useGatewayConnection";
+import { useSubAgentPoller } from "@/hooks/useSubAgentPoller";
 import { useOfficeStore } from "@/store/office-store";
 
 function ThemeSync() {
@@ -83,7 +84,8 @@ export function App() {
   );
   const gatewayToken = injected?.gatewayToken || import.meta.env.VITE_GATEWAY_TOKEN || "";
 
-  const { wsClient } = useGatewayConnection({ url: gatewayUrl, token: gatewayToken });
+  const { wsClient, rpcClient } = useGatewayConnection({ url: gatewayUrl, token: gatewayToken });
+  useSubAgentPoller(rpcClient);
 
   return (
     <ErrorBoundary>
