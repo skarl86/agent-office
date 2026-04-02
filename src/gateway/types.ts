@@ -180,6 +180,7 @@ export interface VisualAgent {
   pendingRetire: boolean;
   arrivedAtMeetingAt: number | null;
   manualMeeting: boolean;
+  model?: string | null;
 }
 
 export interface CollaborationLink {

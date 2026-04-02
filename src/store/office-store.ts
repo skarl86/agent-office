@@ -92,6 +92,7 @@ function createVisualAgent(
     pendingRetire: false,
     arrivedAtMeetingAt: null,
     manualMeeting: false,
+    model: null,
   };
 }
 

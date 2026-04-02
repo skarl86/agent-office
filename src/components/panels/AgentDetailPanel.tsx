@@ -5,6 +5,25 @@ import { STATUS_COLORS } from "@/lib/constants";
 import { generateSvgAvatar } from "@/lib/avatar-generator";
 import type { VisualAgent } from "@/gateway/types";
 
+function formatModelName(model: string): string {
+  // anthropic/claude-opus-4-6 → Claude Opus 4
+  // anthropic/claude-sonnet-4-6 → Claude Sonnet 4
+  // openai/gpt-4o → GPT-4o
+  const claudeMatch = model.match(/claude-(\w+)-(\d+)/i);
+  if (claudeMatch) {
+    const variant = claudeMatch[1]!;
+    const version = claudeMatch[2]!;
+    return `Claude ${variant.charAt(0).toUpperCase()}${variant.slice(1)} ${version}`;
+  }
+  const gptMatch = model.match(/openai\/(gpt-[^/]+)/i);
+  if (gptMatch) {
+    return gptMatch[1]!.toUpperCase().replace("GPT-", "GPT-");
+  }
+  // 알 수 없는 형식 — 마지막 슬래시 뒤의 값
+  const parts = model.split("/");
+  return parts[parts.length - 1] ?? model;
+}
+
 interface AgentDetailPanelProps {
   agentId: string;
   onClose: () => void;
@@ -98,6 +117,9 @@ function AgentInfoSection({ agent }: { agent: VisualAgent }) {
   const rows: { label: string; value: string }[] = [
     { label: "ID", value: agent.id.slice(0, 12) + "…" },
     { label: t("agentDetail.zone", { defaultValue: "구역" }), value: agent.zone },
+    ...(agent.model
+      ? [{ label: t("agentDetail.model", { defaultValue: "모델" }), value: formatModelName(agent.model) }]
+      : []),
     {
       label: t("agentDetail.toolCalls", { defaultValue: "도구 호출" }),
       value: String(agent.toolCallCount),
