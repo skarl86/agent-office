@@ -166,7 +166,17 @@
   "agents": {
     "title": "에이전트",
     "description": "에이전트 목록 및 설정",
-    "placeholder": "에이전트 관리 기능 준비 중..."
+    "placeholder": "에이전트 관리 기능 준비 중...",
+    "channels": {
+      "title": "채널 연결",
+      "gatewayInfo": "채널 연결 상태는 Gateway에서 관리됩니다. 여기서는 현재 상태만 확인할 수 있습니다.",
+      "noBindings": "연결된 채널이 없습니다",
+      "connected": "연결됨",
+      "disconnected": "연결 해제",
+      "connecting": "연결 중",
+      "error": "오류",
+      "configured": "설정됨"
+    }
   },
   "settings": {
     "title": "설정",

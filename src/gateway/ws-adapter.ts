@@ -146,8 +146,10 @@ export class WsAdapter implements GatewayAdapter {
   }
 
   async channelsStatus(): Promise<ChannelInfo[]> {
-    const result = await this.rpcClient.request<{ channels?: ChannelInfo[] }>("channels.status");
-    return Array.isArray(result) ? result : (result?.channels ?? []);
+    const result = await this.rpcClient.request<GatewayChannelsStatusResult>("channels.status", {
+      probe: true,
+    });
+    return flattenChannelAccounts(result);
   }
 
   async channelsLogout(channel: string, accountId?: string): Promise<{ cleared: boolean }> {
@@ -309,4 +311,60 @@ export class WsAdapter implements GatewayAdapter {
     ];
     return known.includes(raw as ChannelType) ? (raw as ChannelType) : "telegram";
   }
+}
+
+// --- channels.status 응답 파싱 ---
+
+interface GatewayChannelAccountSnapshot {
+  accountId?: string;
+  name?: string;
+  connected?: boolean;
+  running?: boolean;
+  configured?: boolean;
+  linked?: boolean;
+  error?: string;
+  lastError?: string;
+  lastConnectedAt?: number;
+  lastMessageAt?: number;
+  reconnectAttempts?: number;
+  mode?: string;
+}
+
+interface GatewayChannelsStatusResult {
+  channelAccounts?: Record<string, GatewayChannelAccountSnapshot[]>;
+  channelLabels?: Record<string, string>;
+}
+
+function deriveChannelStatus(snap: GatewayChannelAccountSnapshot): ChannelInfo["status"] {
+  if (snap.error ?? snap.lastError) return "error";
+  if (snap.connected === true) return "connected";
+  if (snap.connected === false) return snap.running ? "connecting" : "disconnected";
+  if (snap.running && snap.linked !== false && snap.configured !== false) return "connected";
+  if (snap.running) return "connecting";
+  return "disconnected";
+}
+
+function flattenChannelAccounts(result: GatewayChannelsStatusResult): ChannelInfo[] {
+  const accounts = result.channelAccounts ?? {};
+  const labels = result.channelLabels ?? {};
+  const channels: ChannelInfo[] = [];
+
+  for (const [channelType, snapshots] of Object.entries(accounts)) {
+    for (const snap of snapshots) {
+      channels.push({
+        id: snap.accountId ? `${channelType}:${snap.accountId}` : channelType,
+        type: channelType as ChannelType,
+        name: snap.name ?? labels[channelType] ?? channelType,
+        status: deriveChannelStatus(snap),
+        accountId: snap.accountId,
+        error: snap.error ?? snap.lastError ?? undefined,
+        configured: snap.configured,
+        linked: snap.linked,
+        running: snap.running,
+        lastConnectedAt: snap.lastConnectedAt,
+      });
+    }
+  }
+
+  return channels;
 }
