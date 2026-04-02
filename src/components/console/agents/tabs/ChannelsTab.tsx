@@ -38,7 +38,7 @@ export function ChannelsTab({ agent }: ChannelsTabProps) {
     fetchAgentChannels();
   }, [agent.id, fetchAgentChannels]);
 
-  const channels = agentChannels ?? [];
+  const channels = Array.isArray(agentChannels) ? agentChannels : [];
 
   if (agentChannelsLoading) {
     return (
