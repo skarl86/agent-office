@@ -194,7 +194,7 @@ async function fetchGatewayConfig(
 ): Promise<void> {
   try {
     const resp = await rpc.request<ConfigGetResponse>("config.get", {
-      keys: ["agents.defaults.subagents", "tools.agentToAgent"],
+      keys: ["agents.defaults.subagents", "agents.defaults.model", "agents.list", "tools.agentToAgent"],
     });
     const val = resp.value as Record<string, unknown> | undefined;
     if (val) {
@@ -208,6 +208,34 @@ async function fetchGatewayConfig(
           enabled: a2a.enabled ?? false,
           allow: Array.isArray(a2a.allow) ? a2a.allow : [],
         });
+      }
+
+      // 에이전트별 기본 모델 매핑 (config 기반)
+      const defaultModel = val["agents.defaults.model"] as { primary?: string } | string | undefined;
+      const defaultModelStr = typeof defaultModel === "string"
+        ? defaultModel
+        : typeof defaultModel === "object" && defaultModel?.primary
+          ? defaultModel.primary
+          : null;
+
+      const agentList = val["agents.list"] as Array<{ id: string; model?: { primary?: string } | string }> | undefined;
+      if (agentList) {
+        const store = useOfficeStore.getState();
+        for (const entry of agentList) {
+          if (!entry.id || !store.agents.has(entry.id)) continue;
+          const agent = store.agents.get(entry.id);
+          if (agent?.model) continue; // 세션 폴링에서 이미 설정된 경우 우선
+
+          const agentModel = typeof entry.model === "string"
+            ? entry.model
+            : typeof entry.model === "object" && entry.model?.primary
+              ? entry.model.primary
+              : defaultModelStr;
+
+          if (agentModel) {
+            store.updateAgent(entry.id, { model: agentModel });
+          }
+        }
       }
     }
   } catch {
